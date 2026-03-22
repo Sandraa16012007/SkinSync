@@ -98,7 +98,6 @@ export default function OnboardingLayout({ onComplete, onLogout }) {
       {/* Onboarding Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/40 px-8 h-20 flex items-center justify-between">
         <div className="flex items-center gap-2">
-           <Shield className="text-primary" size={24} />
            <span className="font-serif text-2xl font-bold tracking-tight">SkinSync</span>
         </div>
         <div className="flex items-center gap-6">

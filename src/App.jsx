@@ -8,11 +8,20 @@ import CTA from './components/CTA'
 import Footer from './components/Footer'
 import Auth from './components/Auth'
 import OnboardingLayout from './components/onboarding/OnboardingLayout'
+import DashboardLayout from './components/dashboard/DashboardLayout'
 
 export default function App() {
-  const [view, setView] = useState('landing') // 'landing' or 'onboarding'
+  const [view, setView] = useState('landing') // 'landing', 'onboarding', 'dashboard'
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState('login')
+  const [onboardingComplete, setOnboardingComplete] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('skinsync_onboarding')
+    if (saved) {
+      setOnboardingComplete(true)
+    }
+  }, [view])
 
   const toggleAuth = (mode = 'login') => {
     setAuthMode(mode)
@@ -21,12 +30,13 @@ export default function App() {
 
   const handleAuthSuccess = () => {
     setShowAuth(false)
-    setView('onboarding')
+    setView('dashboard')
   }
 
   const handleLogout = () => {
     setView('landing')
     localStorage.removeItem('skinsync_onboarding')
+    setOnboardingComplete(false)
   }
 
   if (view === 'onboarding') {
@@ -34,9 +44,21 @@ export default function App() {
       <OnboardingLayout 
         onComplete={(data) => {
           console.log('Onboarding complete:', data)
-          setView('landing')
+          setOnboardingComplete(true)
+          setView('dashboard')
         }}
         onLogout={handleLogout}
+      />
+    )
+  }
+
+  if (view === 'dashboard') {
+    return (
+      <DashboardLayout
+        onboardingComplete={onboardingComplete}
+        onCompleteOnboarding={() => setView('onboarding')}
+        onLogout={handleLogout}
+        onNavigate={setView}
       />
     )
   }
