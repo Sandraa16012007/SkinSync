@@ -56,7 +56,7 @@ export function SafetyScoreCard({ score = 0, status, hasRoutine = false }) {
               />
             </svg>
             <div className="absolute flex flex-col items-center">
-               <span className="text-4xl font-serif font-black text-text">{score}%</span>
+               <span className="text-2xl font-serif font-black text-text">{score}%</span>
                <span className={`text-xs font-black uppercase tracking-widest ${getStatusColor()}`}>{getStatusLabel()}</span>
             </div>
           </div>

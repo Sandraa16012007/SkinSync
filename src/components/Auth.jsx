@@ -23,8 +23,22 @@ export default function Auth({ onClose, onSuccess, initialMode = 'signup' }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    
+    let displayName = formData.name;
+    if (!displayName && mode === 'login' && formData.email) {
+      const emailPart = formData.email.split('@')[0];
+      displayName = emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+    }
+
     // One-time signup logic
-    storage.setLoggedIn(true, formData.name || 'User')
+    storage.setLoggedIn(true, displayName || 'User')
+
+    if (mode === 'login') {
+      const user = storage.getUser() || { skinProfile: {} }
+      user.onboardingComplete = true
+      storage.setUser(user)
+    }
+
     if (onSuccess) onSuccess()
   }
 

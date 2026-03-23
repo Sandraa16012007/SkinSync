@@ -41,7 +41,12 @@ function MainApp() {
   const handleAuthSuccess = () => {
     setShowAuth(false)
     setIsLoggedIn(true)
-    if (storage.isOnboardingComplete()) {
+    
+    // Sync onboarding state so the router doesn't immediately redirect to /onboarding
+    const isComplete = storage.isOnboardingComplete()
+    setOnboardingComplete(isComplete)
+
+    if (isComplete) {
       navigate('/dashboard')
     } else {
       navigate('/onboarding')

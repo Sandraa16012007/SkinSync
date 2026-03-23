@@ -18,9 +18,14 @@ export const storage = {
   },
 
   setLoggedIn(status, userName = '') {
-    const user = this.getUser() || { skinProfile: {}, onboardingComplete: false };
+    const existingUser = this.getUser();
+    const user = existingUser || { skinProfile: {}, onboardingComplete: false };
     user.isLoggedIn = status;
     if (userName) user.userName = userName;
+    if (existingUser) {
+      user.skinProfile = existingUser.skinProfile;
+      user.onboardingComplete = existingUser.onboardingComplete;
+    }
     this.setUser(user);
   },
 

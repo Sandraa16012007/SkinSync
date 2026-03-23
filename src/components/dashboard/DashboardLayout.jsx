@@ -106,7 +106,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
                 
                 <div className="space-y-4">
                   <h1 className="font-serif text-4xl md:text-5xl font-bold text-text">
-                    Hello, Sandra 👋
+                    Hello, {userProfile?.userName || 'there'} 👋
                   </h1>
                   <p className="text-text-muted text-lg font-medium">
                     Let’s get to know your skin before we begin.
@@ -145,7 +145,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
               animate={{ opacity: 1, x: 0 }}
               className="font-serif text-4xl md:text-5xl font-bold text-text"
             >
-              Welcome back, {userProfile?.userName || 'Sandra'} 👋
+              Welcome back, {userProfile?.userName || 'there'} 👋
             </motion.h1>
             <p className="text-text-muted font-medium text-lg">
               You've scanned {stats.totalScans} products so far.
@@ -188,7 +188,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
           {/* Sidebar Column */}
           <div className="lg:col-span-4 space-y-8">
              <SafetyScoreCard 
-               score={morning.length + night.length > 0 ? 85 : 0} 
+               score={stats.totalScans > 0 ? Math.round((stats.weeklyScans / Math.max(stats.totalScans, 1)) * 100) : 0} 
                hasRoutine={morning.length + night.length > 0} 
              />
              <InsightsCard insights={[]} /> 
