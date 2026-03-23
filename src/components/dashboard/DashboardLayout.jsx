@@ -172,7 +172,10 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
 
           {/* Sidebar Column */}
           <div className="lg:col-span-4 space-y-8">
-             <SafetyScoreCard score={85} /> {/* Could be calculated from routine */}
+             <SafetyScoreCard 
+               score={morning.length + night.length > 0 ? 85 : 0} 
+               hasRoutine={morning.length + night.length > 0} 
+             />
              <InsightsCard insights={[]} /> 
              <SkinFactCard />
           </div>

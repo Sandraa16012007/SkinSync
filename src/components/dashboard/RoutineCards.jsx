@@ -1,11 +1,18 @@
 import { motion } from 'framer-motion'
 import { ShieldCheck, AlertCircle, Sunrise, Moon, Plus, Edit3 } from 'lucide-react'
 
-export function SafetyScoreCard({ score = 82, status = "Safe" }) {
+export function SafetyScoreCard({ score = 0, status, hasRoutine = false }) {
   const getStatusColor = () => {
     if (score >= 80) return 'text-primary'
     if (score >= 60) return 'text-yellow-500'
     return 'text-red-500'
+  }
+
+  const getStatusLabel = () => {
+    if (status) return status
+    if (score >= 80) return 'Safe'
+    if (score >= 60) return 'Moderate'
+    return 'Risky'
   }
 
   const circumference = 2 * Math.PI * 40
@@ -21,52 +28,62 @@ export function SafetyScoreCard({ score = 82, status = "Safe" }) {
         <h3 className="font-serif text-xl font-bold text-text">Routine Safety</h3>
       </header>
       
-      <div className="relative w-40 h-40 flex items-center justify-center mb-6">
-        <svg className="w-full h-full transform -rotate-90">
-          <circle
-            cx="80"
-            cy="80"
-            r="40"
-            fill="transparent"
-            stroke="#F0EFEA"
-            strokeWidth="10"
-          />
-          <motion.circle
-            cx="80"
-            cy="80"
-            r="40"
-            fill="transparent"
-            stroke="currentColor"
-            strokeWidth="10"
-            strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: offset }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            className={getStatusColor()}
-            strokeLinecap="round"
-          />
-        </svg>
-        <div className="absolute flex flex-col items-center">
-           <span className="text-4xl font-serif font-black text-text">{score}%</span>
-           <span className={`text-xs font-black uppercase tracking-widest ${getStatusColor()}`}>{status}</span>
-        </div>
-      </div>
+      {hasRoutine ? (
+        <>
+          <div className="relative w-40 h-40 flex items-center justify-center mb-6">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle
+                cx="80"
+                cy="80"
+                r="40"
+                fill="transparent"
+                stroke="#F0EFEA"
+                strokeWidth="10"
+              />
+              <motion.circle
+                cx="80"
+                cy="80"
+                r="40"
+                fill="transparent"
+                stroke="currentColor"
+                strokeWidth="10"
+                strokeDasharray={circumference}
+                initial={{ strokeDashoffset: circumference }}
+                animate={{ strokeDashoffset: offset }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
+                className={getStatusColor()}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute flex flex-col items-center">
+               <span className="text-4xl font-serif font-black text-text">{score}%</span>
+               <span className={`text-xs font-black uppercase tracking-widest ${getStatusColor()}`}>{getStatusLabel()}</span>
+            </div>
+          </div>
 
-      <div className="w-full space-y-4">
-        <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 flex items-start gap-3 text-left">
-           <AlertCircle className="text-orange-500 shrink-0" size={18} />
-           <p className="text-[12px] font-bold text-orange-900 leading-snug">
-              Retinol + AHA detected in your night routine. May cause irritation.
-           </p>
+          <div className="w-full">
+            <button className="w-full py-3 text-sm font-bold text-text-muted hover:text-primary transition-all flex items-center justify-center gap-2">
+               View full routine summary
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="py-8 space-y-5 w-full">
+          <div className="w-20 h-20 bg-bg-warm rounded-full flex items-center justify-center mx-auto">
+            <ShieldCheck className="text-text-muted/20" size={36} />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-bold text-text-muted/60">No routine set up yet</p>
+            <p className="text-xs text-text-muted/40 max-w-[200px] mx-auto leading-relaxed">
+              Add products to your morning and night routine to get a safety score.
+            </p>
+          </div>
         </div>
-        
-        <button className="w-full py-3 text-sm font-bold text-text-muted hover:text-primary transition-all flex items-center justify-center gap-2">
-           View full routine summary
-        </button>
-      </div>
+      )}
     </motion.div>
   )
 }
+
 
 export function DailyRoutineCard({ morning = [], night = [], onEdit }) {
   return (
