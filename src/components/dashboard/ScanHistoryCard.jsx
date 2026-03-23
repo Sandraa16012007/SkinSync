@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { History, ChevronRight, Search } from 'lucide-react'
 
-export default function ScanHistoryCard({ scans = [] }) {
+export default function ScanHistoryCard({ scans = [], onSelect }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -20,22 +20,25 @@ export default function ScanHistoryCard({ scans = [] }) {
 
       <div className="flex-1 space-y-4">
         {scans.length > 0 ? scans.map((scan, i) => (
-          <div 
-            key={i} 
-            className="flex items-center justify-between p-4 bg-bg-warm/20 rounded-2xl border border-transparent hover:border-border/10 hover:bg-bg-warm/40 transition-all cursor-pointer group/item"
+          <button 
+            key={scan.id || i} 
+            onClick={() => onSelect && onSelect(scan.id)}
+            className="w-full flex items-center justify-between p-4 bg-bg-warm/20 rounded-2xl border border-transparent hover:border-border/10 hover:bg-bg-warm/40 transition-all cursor-pointer group/item text-left"
           >
             <div className="flex items-center gap-4">
               <div className={`w-3 h-3 rounded-full ${
-                scan.status === 'safe' ? 'bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.5)]' : 
+                !scan.status || scan.status === 'safe' ? 'bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.5)]' : 
                 scan.status === 'moderate' ? 'bg-yellow-400' : 'bg-red-400'
               }`} />
-              <div>
-                <p className="text-sm font-bold text-text mb-0.5">{scan.name}</p>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">{scan.date}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-text mb-0.5 truncate">{scan.productName}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">
+                  {new Date(scan.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
               </div>
             </div>
-            <ChevronRight size={16} className="text-text-muted/20 group-hover/item:text-primary transition-all" />
-          </div>
+            <ChevronRight size={16} className="text-text-muted/20 group-hover/item:text-primary transition-all shrink-0" />
+          </button>
         )) : (
           <div className="flex-1 flex flex-col items-center justify-center py-10 text-center space-y-4">
             <div className="w-16 h-16 bg-bg-warm rounded-full flex items-center justify-center">
@@ -49,7 +52,7 @@ export default function ScanHistoryCard({ scans = [] }) {
       {scans.length > 0 && (
          <div className="mt-8 p-4 bg-primary/5 rounded-2xl border border-primary/10">
             <p className="text-[11px] font-bold text-primary/80 text-center">
-               You've scanned 5 products this week. Keep it up!
+               Viewing your {scans.length} most recent scans.
             </p>
          </div>
       )}

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Sparkles, ArrowRight, ShieldCheck } from 'lucide-react'
 import DashboardNavbar from './DashboardNavbar'
@@ -6,24 +7,78 @@ import { SafetyScoreCard, DailyRoutineCard } from './RoutineCards'
 import ScanHistoryCard from './ScanHistoryCard'
 import { SkinFactCard, InsightsCard } from './InsightCards'
 
-const MOCK_DATA = {
-  user: "Sandra",
-  routineScore: 82,
-  scans: [
-    { name: "La Roche-Posay Effaclar", date: "2 hours ago", status: "safe" },
-    { name: "The Ordinary Niacinamide", date: "Yesterday", status: "safe" },
-    { name: "CeraVe Hydrating Cleanser", date: "2 days ago", status: "safe" },
-    { name: "Paula's Choice BHA", date: "3 days ago", status: "moderate" }
-  ],
-  insights: [
-    { type: 'info', text: "Your skin may react to fragrance." },
-    { type: 'warning', text: "Avoid combining retinol with exfoliating acids." }
-  ],
-  morningRoutine: ["CeraVe Cleanser", "Vitamin C Serum", "La Roche-Posay SPF 50"],
-  nightRoutine: ["Double Cleanse", "Niacinamide", "Retinol 0.5%", "Barrier Cream"]
-}
+// Modals
+import SettingsModal from '../modals/SettingsModal'
+import CameraModal from '../modals/CameraModal'
+import UploadModal from '../modals/UploadModal'
+import RoutineModal from '../modals/RoutineModal'
+import AddProductModal from '../modals/AddProductModal'
 
-export default function DashboardLayout({ onboardingComplete = false, onCompleteOnboarding, onLogout, onNavigate }) {
+import { db } from '../../utils/db'
+import { storage } from '../../utils/storage'
+
+export default function DashboardLayout({ onboardingComplete = false, onCompleteOnboarding, onLogout, onNavigate, onStartAnalysis }) {
+  const [activeModals, setActiveModals] = useState({
+    settings: false,
+    camera: false,
+    upload: false,
+    routine: false,
+    addProduct: false
+  })
+  
+  const [morning, setMorning] = useState([])
+  const [night, setNight] = useState([])
+  const [scans, setScans] = useState([])
+  const [stats, setStats] = useState({ totalScans: 0, weeklyScans: 0 })
+  const [userProfile, setUserProfile] = useState(storage.getUser())
+  const [addSection, setAddSection] = useState('Morning')
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      const recentScans = await db.getAllScans()
+      setScans(recentScans.slice(0, 5))
+
+      const currentRoutine = await db.getRoutine()
+      setMorning(currentRoutine.morning)
+      setNight(currentRoutine.night)
+
+      const currentStats = await db.getStats()
+      setStats(currentStats)
+    }
+    loadDashboardData()
+  }, [])
+
+  const toggleModal = (modal, isOpen) => {
+    setActiveModals(prev => ({ ...prev, [modal]: isOpen }))
+  }
+
+  const handleSettingsAction = (id) => {
+    if (id === 'logout') onLogout()
+    if (id === 'edit-profile') onCompleteOnboarding()
+    toggleModal('settings', false)
+  }
+
+  const handleNewScan = (id) => {
+    // Navigate to results
+    if (onStartAnalysis) onStartAnalysis(id)
+  }
+
+  const handleUpdateRoutine = async (m, n) => {
+    setMorning(m)
+    setNight(n)
+    await db.updateRoutine({ morning: m, night: n })
+  }
+
+  const handleAddProduct = async (product) => {
+    const newMorning = addSection === 'Morning' ? [...morning, product.productName] : morning
+    const newNight = addSection === 'Night' ? [...night, product.productName] : night
+    
+    setMorning(newMorning)
+    setNight(newNight)
+    await db.updateRoutine({ morning: newMorning, night: newNight })
+    toggleModal('addProduct', false)
+  }
+
   if (!onboardingComplete) {
     return (
        <div className="min-h-screen bg-[#F7F6F3] flex flex-col">
@@ -64,7 +119,11 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
 
   return (
     <div className="min-h-screen bg-[#F7F6F3] pb-20">
-      <DashboardNavbar onLogout={onLogout} onNavigate={onNavigate} />
+      <DashboardNavbar 
+        onLogout={onLogout} 
+        onNavigate={onNavigate} 
+        onOpenSettings={() => toggleModal('settings', true)}
+      />
       
       <main className="max-w-7xl mx-auto pt-32 px-6 md:px-8 space-y-8">
         {/* Header Section */}
@@ -75,10 +134,10 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
               animate={{ opacity: 1, x: 0 }}
               className="font-serif text-4xl md:text-5xl font-bold text-text"
             >
-              Welcome back, Sandra 👋
+              Welcome back, {userProfile?.userName || 'Sandra'} 👋
             </motion.h1>
             <p className="text-text-muted font-medium text-lg">
-              Here’s what’s happening with your skin today.
+              You've scanned {stats.totalScans} products so far.
             </p>
           </div>
           
@@ -88,7 +147,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
             className="inline-flex items-center gap-2 px-4 py-2 bg-accent-teal/10 border border-accent-teal/20 rounded-full"
           >
             <div className="w-2 h-2 bg-accent-teal rounded-full animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-accent-teal-dark">Your skin profile is active</span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-accent-teal-dark">{userProfile?.skinProfile?.skinType || 'Active'} skin profile</span>
           </motion.div>
         </header>
 
@@ -97,27 +156,66 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
           {/* Main Column */}
           <div className="lg:col-span-8 space-y-8">
              <HeroScanCard 
-               onScan={() => console.log('Scan starting...')}
-               onUpload={() => console.log('Upload opening...')}
+               onScan={() => toggleModal('camera', true)}
+               onUpload={() => toggleModal('upload', true)}
              />
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <DailyRoutineCard 
-                  morning={MOCK_DATA.morningRoutine}
-                  night={MOCK_DATA.nightRoutine}
+                  morning={morning}
+                  night={night}
+                  onEdit={() => toggleModal('routine', true)}
                 />
-                <ScanHistoryCard scans={MOCK_DATA.scans} />
+                <ScanHistoryCard scans={scans} onSelect={(id) => onStartAnalysis && onStartAnalysis(id)} />
              </div>
           </div>
 
           {/* Sidebar Column */}
           <div className="lg:col-span-4 space-y-8">
-             <SafetyScoreCard score={MOCK_DATA.routineScore} />
-             <InsightsCard insights={MOCK_DATA.insights} />
+             <SafetyScoreCard score={85} /> {/* Could be calculated from routine */}
+             <InsightsCard insights={[]} /> 
              <SkinFactCard />
           </div>
         </div>
       </main>
+
+      {/* Modals Container */}
+      <SettingsModal 
+        isOpen={activeModals.settings} 
+        onClose={() => toggleModal('settings', false)}
+        onAction={handleSettingsAction}
+      />
+      
+      <CameraModal 
+        isOpen={activeModals.camera} 
+        onClose={() => toggleModal('camera', false)}
+        onCapture={handleNewScan}
+      />
+
+      <UploadModal 
+        isOpen={activeModals.upload} 
+        onClose={() => toggleModal('upload', false)}
+        onUpload={handleNewScan}
+      />
+
+      <RoutineModal 
+        isOpen={activeModals.routine} 
+        onClose={() => toggleModal('routine', false)}
+        morningProducts={morning}
+        nightProducts={night}
+        onUpdateRoutine={handleUpdateRoutine}
+        onOpenAddModal={(section) => {
+          setAddSection(section)
+          toggleModal('addProduct', true)
+        }}
+      />
+
+      <AddProductModal 
+        isOpen={activeModals.addProduct} 
+        onClose={() => toggleModal('addProduct', false)}
+        scannedProducts={scans}
+        onAdd={handleAddProduct}
+      />
     </div>
   )
 }

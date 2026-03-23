@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 
 export default function Navbar({ onAuth }) {
@@ -28,9 +29,9 @@ export default function Navbar({ onAuth }) {
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <a href="#" className="font-serif text-xl font-semibold tracking-tight text-text">
+          <Link to="/" className="font-serif text-xl font-semibold tracking-tight text-text">
             SkinSync
-          </a>
+          </Link>
 
           {/* Center links - desktop */}
           <div className="hidden md:flex items-center gap-8">

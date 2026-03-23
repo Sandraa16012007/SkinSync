@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Sparkles, X } from 'lucide-react'
+import { Sparkles, Shield, User, Mail, Lock, Eye, EyeOff, ArrowRight, X } from 'lucide-react'
+import { storage } from '../utils/storage'
 
-export default function Auth({ onClose, onSuccess, initialMode = 'login' }) {
+export default function Auth({ onClose, onSuccess, initialMode = 'signup' }) {
   const [mode, setMode] = useState(initialMode) 
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -22,7 +23,8 @@ export default function Auth({ onClose, onSuccess, initialMode = 'login' }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    console.log(`${mode} submitted:`, formData)
+    // One-time signup logic
+    storage.setLoggedIn(true, formData.name || 'User')
     if (onSuccess) onSuccess()
   }
 

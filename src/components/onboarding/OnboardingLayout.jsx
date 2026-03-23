@@ -4,6 +4,7 @@ import { Shield, LayoutDashboard, LogOut } from 'lucide-react'
 import ProgressBar from './ProgressBar'
 import StepCard from './StepCard'
 import ChipSelector from './ChipSelector'
+import { storage } from '../../utils/storage'
 
 const STEPS = [
   {
@@ -41,8 +42,8 @@ const STEPS = [
 export default function OnboardingLayout({ onComplete, onLogout }) {
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
   const [data, setData] = useState(() => {
-    const saved = localStorage.getItem('skinsync_onboarding')
-    return saved ? JSON.parse(saved) : {
+    const user = storage.getUser()
+    return user?.skinProfile?.skinType ? user.skinProfile : {
       skinType: '',
       concerns: [],
       sensitivities: [],
@@ -52,8 +53,13 @@ export default function OnboardingLayout({ onComplete, onLogout }) {
     }
   })
 
+  // Persistence is handled on complete now to avoid partial data issues if preferred, 
+  // or we can keep it here but using our utility.
   useEffect(() => {
-    localStorage.setItem('skinsync_onboarding', JSON.stringify(data))
+    // We don't want to mark it as complete until the end, but we can save progress
+    const user = storage.getUser() || {}
+    user.skinProfile = data
+    storage.setUser(user)
   }, [data])
 
   const currentStep = STEPS[currentStepIdx]
@@ -73,6 +79,7 @@ export default function OnboardingLayout({ onComplete, onLogout }) {
 
   const handleNext = () => {
     if (isLastStep) {
+      storage.updateProfile(data)
       onComplete(data)
     } else {
       setCurrentStepIdx(prev => prev + 1)

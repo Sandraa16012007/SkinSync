@@ -68,7 +68,7 @@ export function SafetyScoreCard({ score = 82, status = "Safe" }) {
   )
 }
 
-export function DailyRoutineCard({ morning = [], night = [] }) {
+export function DailyRoutineCard({ morning = [], night = [], onEdit }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -77,7 +77,10 @@ export function DailyRoutineCard({ morning = [], night = [] }) {
     >
       <div className="flex items-center justify-between">
         <h3 className="font-serif text-xl font-bold text-text">Your Routine</h3>
-        <button className="p-2 bg-bg-warm/50 text-text-muted hover:text-primary rounded-xl transition-all">
+        <button 
+          onClick={onEdit}
+          className="p-2 bg-bg-warm/50 text-text-muted hover:text-primary rounded-xl transition-all"
+        >
            <Edit3 size={18} />
         </button>
       </div>

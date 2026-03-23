@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
+
+// Landing Components
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import TrustStrip from './components/TrustStrip'
@@ -7,80 +10,124 @@ import Features from './components/Features'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
 import Auth from './components/Auth'
+
+// Core Modules
 import OnboardingLayout from './components/onboarding/OnboardingLayout'
 import DashboardLayout from './components/dashboard/DashboardLayout'
+import ResultsPage from './pages/ResultsPage'
+import LoadingScreen from './components/common/LoadingScreen'
+import OfflineBanner from './components/common/OfflineBanner'
+import { storage } from './utils/storage'
 
-export default function App() {
-  const [view, setView] = useState('landing') // 'landing', 'onboarding', 'dashboard'
+function MainApp() {
   const [showAuth, setShowAuth] = useState(false)
-  const [authMode, setAuthMode] = useState('login')
-  const [onboardingComplete, setOnboardingComplete] = useState(false)
+  const [authMode, setAuthMode] = useState('signup')
+  const [isLoggedIn, setIsLoggedIn] = useState(storage.isLoggedIn())
+  const [onboardingComplete, setOnboardingComplete] = useState(storage.isOnboardingComplete())
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  
+  const navigate = useNavigate()
 
   useEffect(() => {
-    const saved = localStorage.getItem('skinsync_onboarding')
-    if (saved) {
-      setOnboardingComplete(true)
-    }
-  }, [view])
+    setIsLoggedIn(storage.isLoggedIn())
+    setOnboardingComplete(storage.isOnboardingComplete())
+  }, [])
 
-  const toggleAuth = (mode = 'login') => {
+  const toggleAuth = (mode = 'signup') => {
     setAuthMode(mode)
     setShowAuth(true)
   }
 
   const handleAuthSuccess = () => {
     setShowAuth(false)
-    setView('dashboard')
+    setIsLoggedIn(true)
+    navigate('/onboarding')
   }
 
   const handleLogout = () => {
-    setView('landing')
-    localStorage.removeItem('skinsync_onboarding')
+    storage.clear()
+    setIsLoggedIn(false)
     setOnboardingComplete(false)
+    navigate('/')
   }
 
-  if (view === 'onboarding') {
-    return (
-      <OnboardingLayout 
-        onComplete={(data) => {
-          console.log('Onboarding complete:', data)
-          setOnboardingComplete(true)
-          setView('dashboard')
-        }}
-        onLogout={handleLogout}
-      />
-    )
-  }
-
-  if (view === 'dashboard') {
-    return (
-      <DashboardLayout
-        onboardingComplete={onboardingComplete}
-        onCompleteOnboarding={() => setView('onboarding')}
-        onLogout={handleLogout}
-        onNavigate={setView}
-      />
-    )
+  const handleStartAnalysis = (id = 'new-result') => {
+    setIsAnalyzing(true)
+    setTimeout(() => {
+      setIsAnalyzing(false)
+      navigate(`/results/${id}`)
+    }, 2500)
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <Navbar onAuth={toggleAuth} />
-      <Hero onAuth={() => toggleAuth('signup')} />
-      <TrustStrip />
-      <Features />
-      <CTA onAuth={() => toggleAuth('signup')} />
-      <Footer />
-
+    <>
       <AnimatePresence>
-        {showAuth && (
-          <Auth 
-            initialMode={authMode} 
-            onClose={() => setShowAuth(false)} 
-            onSuccess={handleAuthSuccess}
-          />
-        )}
+        {isAnalyzing && <LoadingScreen />}
       </AnimatePresence>
-    </div>
+      
+      <OfflineBanner />
+
+      <Routes>
+        <Route path="/" element={
+          <div className="min-h-screen bg-bg">
+            <Navbar onAuth={toggleAuth} />
+            <Hero onAuth={() => toggleAuth('signup')} />
+            <TrustStrip />
+            <Features />
+            <CTA onAuth={() => toggleAuth('signup')} />
+            <Footer />
+
+            <AnimatePresence>
+              {showAuth && (
+                <Auth 
+                  initialMode={authMode} 
+                  onClose={() => setShowAuth(false)} 
+                  onSuccess={handleAuthSuccess}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        } />
+
+        <Route path="/onboarding" element={
+          !isLoggedIn ? <Navigate to="/" replace /> :
+          <OnboardingLayout 
+            onComplete={(data) => {
+              setOnboardingComplete(true)
+              navigate('/dashboard')
+            }}
+            onLogout={handleLogout}
+          />
+        } />
+
+        <Route path="/dashboard" element={
+          !isLoggedIn ? <Navigate to="/" replace /> :
+          !onboardingComplete ? <Navigate to="/onboarding" replace /> :
+          <DashboardLayout
+            onboardingComplete={onboardingComplete}
+            onCompleteOnboarding={() => navigate('/onboarding')}
+            onLogout={handleLogout}
+            onNavigate={(view) => view === 'landing' ? navigate('/') : navigate(`/${view}`)}
+            onStartAnalysis={handleStartAnalysis}
+          />
+        } />
+
+        <Route path="/results/:id" element={
+          !isLoggedIn ? <Navigate to="/" replace /> :
+          <ResultsPage onBack={() => navigate('/dashboard')} />
+        } />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
+  )
+}
+
+export default function App() {
+  return (
+    <Router>
+      <MainApp />
+    </Router>
   )
 }

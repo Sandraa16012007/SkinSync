@@ -6,7 +6,7 @@ export function SkinFactCard() {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-accent-lavender/10 rounded-[2rem] p-8 border border-accent-lavender/20 flex flex-col justify-between h-full group"
+      className="bg-accent-lavender/10 rounded-[2rem] p-8 border border-accent-lavender/20 flex flex-col justify-between group"
     >
       <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform">
          <Lightbulb className="text-accent-lavender" size={24} />
