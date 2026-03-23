@@ -35,6 +35,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
 
   useEffect(() => {
     const loadDashboardData = async () => {
+      setUserProfile(storage.getUser())
       const recentScans = await db.getAllScans()
       setScans(recentScans.slice(0, 5))
 
@@ -61,6 +62,16 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
   const handleNewScan = (id) => {
     // Navigate to results
     if (onStartAnalysis) onStartAnalysis(id)
+  }
+
+  const handleDeleteScan = async (id) => {
+    if (window.confirm('Delete this scan? This action cannot be undone.')) {
+      await db.deleteScan(id);
+      const recentScans = await db.getAllScans()
+      setScans(recentScans.slice(0, 5))
+      const currentStats = await db.getStats()
+      setStats(currentStats)
+    }
   }
 
   const handleUpdateRoutine = async (m, n) => {
@@ -166,7 +177,11 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
                   night={night}
                   onEdit={() => toggleModal('routine', true)}
                 />
-                <ScanHistoryCard scans={scans} onSelect={(id) => onStartAnalysis && onStartAnalysis(id)} />
+                <ScanHistoryCard 
+                  scans={scans} 
+                  onSelect={(id) => onStartAnalysis && onStartAnalysis(id)} 
+                  onDelete={handleDeleteScan}
+                />
              </div>
           </div>
 

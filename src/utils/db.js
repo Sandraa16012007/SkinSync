@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'SkinSyncDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 
 export const initDB = async () => {
   return openDB(DB_NAME, DB_VERSION, {
@@ -39,6 +39,10 @@ export const db = {
   },
   async deleteScan(id) {
     const database = await initDB();
+    const scan = await database.get('scans', id);
+    if (scan && scan.resultId) {
+      await database.delete('results', scan.resultId);
+    }
     return database.delete('scans', id);
   },
 

@@ -41,7 +41,11 @@ function MainApp() {
   const handleAuthSuccess = () => {
     setShowAuth(false)
     setIsLoggedIn(true)
-    navigate('/onboarding')
+    if (storage.isOnboardingComplete()) {
+      navigate('/dashboard')
+    } else {
+      navigate('/onboarding')
+    }
   }
 
   const handleLogout = () => {

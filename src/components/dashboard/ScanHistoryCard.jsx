@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import { History, ChevronRight, Search } from 'lucide-react'
+import { History, ChevronRight, Search, Trash2 } from 'lucide-react'
 
-export default function ScanHistoryCard({ scans = [], onSelect }) {
+export default function ScanHistoryCard({ scans = [], onSelect, onDelete }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -20,25 +20,35 @@ export default function ScanHistoryCard({ scans = [], onSelect }) {
 
       <div className="flex-1 space-y-4">
         {scans.length > 0 ? scans.map((scan, i) => (
-          <button 
-            key={scan.id || i} 
-            onClick={() => onSelect && onSelect(scan.id)}
-            className="w-full flex items-center justify-between p-4 bg-bg-warm/20 rounded-2xl border border-transparent hover:border-border/10 hover:bg-bg-warm/40 transition-all cursor-pointer group/item text-left"
-          >
-            <div className="flex items-center gap-4">
-              <div className={`w-3 h-3 rounded-full ${
-                !scan.status || scan.status === 'safe' ? 'bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.5)]' : 
-                scan.status === 'moderate' ? 'bg-yellow-400' : 'bg-red-400'
-              }`} />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-text mb-0.5 truncate">{scan.productName}</p>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">
-                  {new Date(scan.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </p>
+          <div key={scan.id || i} className="group/item relative">
+            <button 
+              onClick={() => onSelect && onSelect(scan.id)}
+              className="w-full flex items-center justify-between p-4 bg-bg-warm/20 rounded-2xl border border-transparent hover:border-border/10 hover:bg-bg-warm/40 transition-all cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-3 h-3 rounded-full ${
+                  !scan.status || scan.status === 'safe' ? 'bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.5)]' : 
+                  scan.status === 'moderate' ? 'bg-yellow-400' : 'bg-red-400'
+                }`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-text mb-0.5 truncate">{scan.productName}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">
+                    {new Date(scan.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
               </div>
-            </div>
-            <ChevronRight size={16} className="text-text-muted/20 group-hover/item:text-primary transition-all shrink-0" />
-          </button>
+              <ChevronRight size={16} className="text-text-muted/20 group-hover/item:text-primary transition-all shrink-0 mr-8" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete && onDelete(scan.id);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-text-muted/20 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover/item:opacity-100"
+            >
+               <Trash2 size={16} />
+            </button>
+          </div>
         )) : (
           <div className="flex-1 flex flex-col items-center justify-center py-10 text-center space-y-4">
             <div className="w-16 h-16 bg-bg-warm rounded-full flex items-center justify-center">

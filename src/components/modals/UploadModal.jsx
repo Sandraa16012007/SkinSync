@@ -223,8 +223,8 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
                   <Camera size={32} />
                 </div>
-                <h3 className="text-xl font-bold">Product Front</h3>
-                <p className="text-sm text-text-muted">Upload a photo of the front or type the product name below.</p>
+                <h3 className="text-xl font-bold">Step 1: Product Front</h3>
+                <p className="text-sm text-text-muted">First, take a picture of the FRONT of the product. We'll ask for the back next.</p>
               </div>
 
               {/* Image upload */}
@@ -290,8 +290,8 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
                   <FileText size={32} />
                   <CheckCircle2 size={16} className="absolute -top-1 -right-1 text-green-500 bg-white rounded-full" />
                 </div>
-                <h3 className="text-xl font-bold">Ingredients List</h3>
-                <p className="text-sm text-text-muted">Upload the back image or type/paste the ingredients below.</p>
+                <h3 className="text-xl font-bold">Step 2: Product Back</h3>
+                <p className="text-sm text-text-muted">Now, take a picture of the BACK indicating the ingredients list.</p>
               </div>
 
               {/* Back image upload */}
