@@ -25,28 +25,13 @@ export default function Auth({ onClose, onSuccess, initialMode = 'signup' }) {
     e.preventDefault()
     
     let displayName = formData.name;
-    const usersDb = JSON.parse(localStorage.getItem('skinsync_users_db') || '{}');
-
-    if (mode === 'signup') {
-      usersDb[formData.email] = { name: formData.name };
-      localStorage.setItem('skinsync_users_db', JSON.stringify(usersDb));
-    } else if (mode === 'login') {
-      if (usersDb[formData.email]?.name) {
-        displayName = usersDb[formData.email].name;
-      } else if (!displayName && formData.email) {
-        const emailPart = formData.email.split('@')[0];
-        displayName = emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
-      }
+    if (!displayName && mode === 'login' && formData.email) {
+      const emailPart = formData.email.split('@')[0];
+      displayName = emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
     }
 
-    // One-time signup logic
-    storage.setLoggedIn(true, displayName || 'User')
-
-    if (mode === 'login') {
-      const user = storage.getUser() || { skinProfile: {} }
-      user.onboardingComplete = true
-      storage.setUser(user)
-    }
+    // Handles signup and login seamlessly via storage isolation
+    storage.setLoggedIn(true, displayName || 'User', formData.email)
 
     if (onSuccess) onSuccess()
   }

@@ -1,13 +1,30 @@
-const STORAGE_KEY = 'skinsync_user_data';
+const STORAGE_KEY = 'skinsync_session';
+const USERS_DB_KEY = 'skinsync_users_data';
 
 export const storage = {
-  getUser() {
+  getCurrentSession() {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : null;
   },
 
+  getCurrentEmail() {
+    const session = this.getCurrentSession();
+    return session?.email || null;
+  },
+
+  getUser() {
+    const email = this.getCurrentEmail();
+    if (!email) return null;
+    const usersDb = JSON.parse(localStorage.getItem(USERS_DB_KEY) || '{}');
+    return usersDb[email] || null;
+  },
+
   setUser(user) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    const email = this.getCurrentEmail();
+    if (!email) return;
+    const usersDb = JSON.parse(localStorage.getItem(USERS_DB_KEY) || '{}');
+    usersDb[email] = user;
+    localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
   },
 
   updateProfile(profile) {
@@ -17,21 +34,25 @@ export const storage = {
     this.setUser(user);
   },
 
-  setLoggedIn(status, userName = '') {
-    const existingUser = this.getUser();
-    const user = existingUser || { skinProfile: {}, onboardingComplete: false };
-    user.isLoggedIn = status;
-    if (userName) user.userName = userName;
-    if (existingUser) {
-      user.skinProfile = existingUser.skinProfile;
-      user.onboardingComplete = existingUser.onboardingComplete;
+  setLoggedIn(status, userName = '', email = '') {
+    if (status && email) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, isLoggedIn: true }));
+      
+      const usersDb = JSON.parse(localStorage.getItem(USERS_DB_KEY) || '{}');
+      if (!usersDb[email]) {
+        usersDb[email] = { userName, skinProfile: {}, onboardingComplete: false };
+      } else if (userName && !usersDb[email].userName) {
+        usersDb[email].userName = userName;
+      }
+      localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
+    } else if (!status) {
+      localStorage.removeItem(STORAGE_KEY);
     }
-    this.setUser(user);
   },
 
   isLoggedIn() {
-    const user = this.getUser();
-    return user?.isLoggedIn || false;
+    const session = this.getCurrentSession();
+    return session?.isLoggedIn || false;
   },
 
   isOnboardingComplete() {

@@ -1,10 +1,16 @@
 import { openDB } from 'idb';
+import { storage } from './storage';
 
-const DB_NAME = 'SkinSyncDB';
+const getDBName = () => {
+  const email = storage.getCurrentEmail();
+  const suffix = email ? email.replace(/[^a-zA-Z0-9]/g, '_') : 'default';
+  return `SkinSyncDB_${suffix}`;
+};
+
 const DB_VERSION = 3;
 
 export const initDB = async () => {
-  return openDB(DB_NAME, DB_VERSION, {
+  return openDB(getDBName(), DB_VERSION, {
     upgrade(db) {
       if (!db.objectStoreNames.contains('scans')) {
         db.createObjectStore('scans', { keyPath: 'id' });
