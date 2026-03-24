@@ -28,7 +28,7 @@ export function SkinFactCard() {
   )
 }
 
-export function InsightsCard({ insights = [] }) {
+export function InsightsCard({ insights = [], skinProfile }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -60,9 +60,21 @@ export function InsightsCard({ insights = [] }) {
         <div className="bg-bg-warm/30 rounded-[1.5rem] p-5 border border-border/10">
            <p className="text-[11px] font-black uppercase tracking-widest text-text-muted/40 mb-3">Skin Profile</p>
            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-primary shadow-sm border border-primary/10">Oily Type</span>
-              <span className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-accent-lavender-dark shadow-sm border border-accent-lavender/10">Acne Prone</span>
-              <span className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-accent-teal-dark shadow-sm border border-accent-teal/10">Sensitive</span>
+              {skinProfile?.skinType && (
+                <span className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-primary shadow-sm border border-primary/10">
+                  {skinProfile.skinType} Type
+                </span>
+              )}
+              {skinProfile?.concerns?.slice(0, 2).map((concern, i) => (
+                <span key={i} className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-accent-lavender-dark shadow-sm border border-accent-lavender/10">
+                  {concern}
+                </span>
+              ))}
+              {skinProfile?.reactivity && skinProfile.reactivity !== 'Rarely reacts' && (
+                <span className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-accent-teal-dark shadow-sm border border-accent-teal/10">
+                  {skinProfile.reactivity}
+                </span>
+              )}
            </div>
         </div>
       </div>

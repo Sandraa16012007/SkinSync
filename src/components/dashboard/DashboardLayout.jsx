@@ -191,7 +191,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
                score={stats.totalScans > 0 ? Math.round((stats.weeklyScans / Math.max(stats.totalScans, 1)) * 100) : 0} 
                hasRoutine={morning.length + night.length > 0} 
              />
-             <InsightsCard insights={[]} /> 
+             <InsightsCard insights={[]} skinProfile={userProfile?.skinProfile} /> 
              <SkinFactCard />
           </div>
         </div>
