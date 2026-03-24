@@ -79,7 +79,7 @@ function MainApp() {
       <Routes>
         <Route path="/" element={
           <div className="min-h-screen bg-bg">
-            <Navbar onAuth={toggleAuth} />
+            <Navbar onAuth={toggleAuth} isLoggedIn={isLoggedIn} />
             <Hero onAuth={() => toggleAuth('signup')} />
             <TrustStrip />
             <Features />

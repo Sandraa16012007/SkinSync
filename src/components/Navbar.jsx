@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 
-export default function Navbar({ onAuth }) {
+export default function Navbar({ onAuth, isLoggedIn }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -49,18 +49,29 @@ export default function Navbar({ onAuth }) {
 
           {/* Right buttons - desktop */}
           <div className="hidden md:flex items-center gap-4">
-            <button
-              onClick={() => onAuth('login')}
-              className="text-sm text-text-muted hover:text-text transition-colors duration-200"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => onAuth('signup')}
-              className="text-sm px-5 py-2 bg-text text-bg rounded-full hover:bg-black transition-all duration-200"
-            >
-              Get Started
-            </button>
+            {isLoggedIn ? (
+              <Link
+                to="/dashboard"
+                className="text-sm px-5 py-2 bg-text text-bg rounded-full hover:bg-black transition-all duration-200"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <button
+                  onClick={() => onAuth('login')}
+                  className="text-sm text-text-muted hover:text-text transition-colors duration-200"
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => onAuth('signup')}
+                  className="text-sm px-5 py-2 bg-text text-bg rounded-full hover:bg-black transition-all duration-200"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu toggle */}
@@ -94,18 +105,30 @@ export default function Navbar({ onAuth }) {
                 </a>
               ))}
               <div className="pt-3 border-t border-border flex flex-col gap-2">
-                <button 
-                  onClick={() => { onAuth('login'); setMobileOpen(false); }}
-                  className="text-sm text-text-muted hover:text-text py-2 text-left"
-                >
-                  Login
-                </button>
-                <button
-                  onClick={() => { onAuth('signup'); setMobileOpen(false); }}
-                  className="text-sm px-5 py-2 bg-text text-bg rounded-full text-center hover:bg-black transition-colors"
-                >
-                  Get Started
-                </button>
+                {isLoggedIn ? (
+                  <Link 
+                    to="/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    className="text-sm px-5 py-2 bg-text text-bg rounded-full text-center hover:bg-black transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => { onAuth('login'); setMobileOpen(false); }}
+                      className="text-sm text-text-muted hover:text-text py-2 text-left"
+                    >
+                      Login
+                    </button>
+                    <button
+                      onClick={() => { onAuth('signup'); setMobileOpen(false); }}
+                      className="text-sm px-5 py-2 bg-text text-bg rounded-full text-center hover:bg-black transition-colors"
+                    >
+                      Get Started
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

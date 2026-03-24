@@ -39,7 +39,7 @@ export default function SettingsModal({ isOpen, onClose, onAction }) {
   ]
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Settings" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Settings" size="md">
       <div className="p-4 space-y-2">
         {settingsItems.map((item) => (
           <button

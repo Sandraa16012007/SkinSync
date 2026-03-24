@@ -25,9 +25,18 @@ export default function Auth({ onClose, onSuccess, initialMode = 'signup' }) {
     e.preventDefault()
     
     let displayName = formData.name;
-    if (!displayName && mode === 'login' && formData.email) {
-      const emailPart = formData.email.split('@')[0];
-      displayName = emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+    const usersDb = JSON.parse(localStorage.getItem('skinsync_users_db') || '{}');
+
+    if (mode === 'signup') {
+      usersDb[formData.email] = { name: formData.name };
+      localStorage.setItem('skinsync_users_db', JSON.stringify(usersDb));
+    } else if (mode === 'login') {
+      if (usersDb[formData.email]?.name) {
+        displayName = usersDb[formData.email].name;
+      } else if (!displayName && formData.email) {
+        const emailPart = formData.email.split('@')[0];
+        displayName = emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+      }
     }
 
     // One-time signup logic
