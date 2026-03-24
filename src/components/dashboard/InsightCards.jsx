@@ -3,28 +3,24 @@ import { Lightbulb, Info, AlertTriangle, Fingerprint } from 'lucide-react'
 
 export function SkinFactCard() {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-accent-lavender/10 rounded-[2rem] p-8 border border-accent-lavender/20 flex flex-col justify-between group"
-    >
-      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform">
-         <Lightbulb className="text-accent-lavender" size={24} />
+    <div className="bg-accent-lavender/10 rounded-[1.5rem] p-6 border border-accent-lavender/20 mt-6 group">
+      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
+         <Lightbulb className="text-accent-lavender" size={20} />
       </div>
       
       <div>
-        <h3 className="font-serif text-xl font-bold text-text mb-3 text-accent-lavender-dark">Did you know?</h3>
+        <h3 className="font-serif text-lg font-bold text-text mb-2 text-accent-lavender-dark">Did you know?</h3>
         <p className="text-sm font-medium text-text-muted leading-relaxed">
           Using too many active ingredients together can damage your skin barrier. Always patch test new products.
         </p>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-accent-lavender/20">
+      <div className="mt-6 pt-4 border-t border-accent-lavender/20">
          <button className="text-[11px] font-black uppercase tracking-widest text-accent-lavender-dark hover:text-black transition-all">
             See more tips
          </button>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -78,6 +74,8 @@ export function InsightsCard({ insights = [], skinProfile }) {
            </div>
         </div>
       </div>
+
+      <SkinFactCard />
     </motion.div>
   )
 }

@@ -192,7 +192,6 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
                hasRoutine={morning.length + night.length > 0} 
              />
              <InsightsCard insights={[]} skinProfile={userProfile?.skinProfile} /> 
-             <SkinFactCard />
           </div>
         </div>
       </main>
