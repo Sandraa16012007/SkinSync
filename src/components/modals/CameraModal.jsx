@@ -110,7 +110,7 @@ export default function CameraModal({ isOpen, onClose, onCapture }) {
       analysis = await scanProduct({
         imageFile: imageBlob,
         ingredientText: ingredientsText,
-        profile: userProfile
+        profile: userProfile.skinProfile || {}
       });
     } catch(err) {
       console.error('AI Pipeline failed:', err);
@@ -130,14 +130,15 @@ export default function CameraModal({ isOpen, onClose, onCapture }) {
 
     const result = { 
       id: resultId, 
-      ingredients: analysis.ingredients.map(name => ({ 
-        name, 
-        isSafe: analysis.safe.includes(name),
-        risk: analysis.risky.includes(name) ? 'high' : 'low'
+      ingredients: analysis.ingredients.map(ing => ({ 
+        name: ing.name || ing, 
+        benefit: ing.benefit,
+        isSafe: typeof ing === 'string' ? analysis.safe.includes(ing) : analysis.safe.includes(ing.name),
+        risk: ing.risk || (typeof ing === 'string' ? (analysis.risky.includes(ing) ? 'high' : 'low') : 'low')
       })),
-      conflicts: [], 
-      warnings: analysis.risky.map(r => ({ ingredient: r, message: 'Flagged by AI analysis.', severity: 'moderate' })),
-      verdict, 
+      conflicts: analysis.conflicts || [], 
+      warnings: analysis.warnings?.length ? analysis.warnings : analysis.risky.map(r => ({ ingredient: r, message: 'Flagged by AI analysis.', severity: 'moderate' })),
+      verdict: analysis.verdict || verdict, 
       score: analysis.score,
       explanation: analysis.explanation
     }

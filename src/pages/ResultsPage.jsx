@@ -51,13 +51,17 @@ export default function ResultsPage() {
 
   const normalizeResult = (aiData) => {
     const safeData = aiData || {}
-    const ingredients = (safeData.ingredients || []).map(ing => ({
-      name: ing.name || 'Unknown',
-      benefit: ing.benefit || "Ingredient used in cosmetic formulations.",
-      isSafe: ing.risk !== "high",
-      risk: ing.risk || "unknown",
-      role: ing.role || "Unknown"
-    }))
+    const ingredients = (safeData.ingredients || []).map(ing => {
+      // Unbox the nested object if corrupted by the old save logic
+      const actualIng = (ing.name && typeof ing.name === 'object') ? ing.name : ing;
+      return {
+        name: actualIng.name || 'Unknown',
+        benefit: actualIng.benefit || "Ingredient used in cosmetic formulations.",
+        isSafe: actualIng.risk !== "high",
+        risk: actualIng.risk || "unknown",
+        role: actualIng.role || "Unknown"
+      }
+    })
 
     return {
       score: safeData.score || 0,

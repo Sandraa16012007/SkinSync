@@ -1,34 +1,91 @@
 import { loadModels } from './modelLoader';
 
-export const generateExplanation = async (data) => {
-  const { profile, safe, risky, score } = data;
+export const generateCompatibilityReport = async (ingredients, profile) => {
   const { llm } = await loadModels();
 
-  const prompt = `You are a professional dermatologist.
-Analyze the following skincare product compatibility for a patient with ${profile.skinType || 'normal'} skin.
-Concerns: ${profile.concerns && profile.concerns.length ? profile.concerns.join(', ') : 'None'}.
-Avoid List: ${profile.avoid && profile.avoid.length ? profile.avoid.join(', ') : 'None'}.
-Compatibility Score: ${score}/100.
-Safe Ingredients: ${safe.join(', ')}.
-Risky/Flagged Ingredients: ${risky.length ? risky.join(', ') : 'None'}.
+  const skinType = profile?.skinType || 'normal';
+  const concerns = profile?.concerns?.length ? profile.concerns.join(', ') : 'None';
+  const avoid = profile?.avoid?.length ? profile.avoid.join(', ') : 'None';
 
-Provide a brief, professional explanation of this score and advice for the patient.
-Keep the response strictly under 80 words. Do not use markdown styling.`;
+  const prompt = `You are an expert dermatologist AI.
+Analyze the skincare ingredients for a patient with ${skinType} skin.
+Concerns: ${concerns}. Avoid List: ${avoid}.
+
+Ingredients: ${ingredients.join(', ')}
+
+Evaluate the compatibility specifically for this user's profile and return ONLY a valid JSON object matching exactly this structure:
+{
+  "score": <number 0-100>,
+  "verdict": "<Safe | Mostly Safe | Use with Caution | Avoid>",
+  "ingredients": [
+    {
+      "name": "<ingredient name>",
+      "benefit": "<How this ingredient specifically interacts with this patient's ${skinType} skin and ${concerns}>",
+      "risk": "<low | moderate | high>"
+    }
+  ],
+  "warnings": [
+    {
+      "ingredient": "<ingredient name causing the warning, if any>",
+      "message": "<Detailed warning explaining the specific risk for this user's ${skinType} skin or ${concerns}>",
+      "severity": "<moderate | high>"
+    }
+  ],
+  "conflicts": [
+    {
+      "pair": ["<ingredient 1>", "<ingredient 2>"],
+      "warning": "<conflict explanation>"
+    }
+  ],
+  "explanation": "<Short professional dermatologist summary setting the product's safety for this specific user.>"
+}
+
+CRITICAL: The 'benefit' field MUST NOT be a generic description. It must explain the effect on ${skinType} skin or how it helps/hurts with ${concerns}.
+Example: Instead of "Humectant", use "Draws moisture to help with your dehydration".
+
+Ensure all ingredients listed are included in the 'ingredients' array.
+Focus on actual dermatological science. Penalize known irritants for sensitive/dry skin, or comedogenic ingredients for acne-prone skin. Bonus points for humectants/ceramides protecting barrier health.
+DO NOT wrap the response in markdown blocks like \`\`\`json. Return raw JSON.`;
 
   try {
     const response = await llm.generate({
       prompt: prompt,
-      temperature: 0.3, // Professional and determined tone
-      max_tokens: 100 // Hard limit roughly corresponding to 80 words
+      temperature: 0.1,
+      max_tokens: 1500
     });
 
-    const explanation = typeof response === 'string' 
-      ? response 
-      : (response.text || response.content || '');
+    const rawText = typeof response === 'string' ? response : (response.text || response.content || '');
+    
+    // Clean up potential markdown formatting from LLM
+    const jsonStr = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    const parsedData = JSON.parse(jsonStr);
 
-    return explanation.trim();
+    // Map safe/risky derived arrays for backward compatibility in components
+    const safe = parsedData.ingredients.filter(i => i.risk !== 'high').map(i => i.name);
+    const risky = parsedData.ingredients.filter(i => i.risk === 'high' || i.risk === 'moderate').map(i => i.name);
+
+    return {
+      ...parsedData,
+      safe,
+      risky
+    };
+
   } catch (error) {
-    console.error('Failed to generate LLM explanation:', error);
-    throw new Error('LLM generation failed');
+    console.error('LLM JSON Generation Error:', error);
+    // Fallback if LLM fails or replies with invalid JSON
+    return {
+      score: 50,
+      verdict: "Unknown",
+      ingredients: ingredients.map(name => ({ name, benefit: "Ingredient used in formulation", risk: "low" })),
+      warnings: [{ ingredient: "System", message: "AI evaluation failed to parse properly.", severity: "high" }],
+      conflicts: [],
+      explanation: "We could not generate an AI response. Please try again.",
+      safe: ingredients,
+      risky: []
+    };
   }
 };
+
+// Deprecated fallback for older integrations
+export const generateExplanation = async () => "Deprecated";
