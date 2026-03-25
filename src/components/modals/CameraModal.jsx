@@ -1,84 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, RotateCcw, Sparkles, ChevronLeft, ArrowRight, Database } from 'lucide-react'
-import { db } from '../../utils/db'
 import { storage } from '../../utils/storage'
+import { scanProduct } from '../../services/scanPipeline'
 
-// --- Analysis Engine ---
-const INGREDIENT_DB = {
-  'Niacinamide': { role: 'Active', benefit: 'Brightening, pore minimizing', risk: 'low' },
-  'Retinol': { role: 'Active', benefit: 'Anti-aging, cell turnover', risk: 'moderate' },
-  'Salicylic Acid': { role: 'Active', benefit: 'Exfoliant, acne-fighting', risk: 'moderate' },
-  'Glycolic Acid': { role: 'Active', benefit: 'Exfoliant, brightening', risk: 'moderate' },
-  'Hyaluronic Acid': { role: 'Hydrator', benefit: 'Deep hydration, plumping', risk: 'low' },
-  'Sodium Hyaluronate': { role: 'Hydrator', benefit: 'Deep hydration', risk: 'low' },
-  'Ceramide NP': { role: 'Barrier Repair', benefit: 'Strengthens skin barrier', risk: 'low' },
-  'Squalane': { role: 'Emollient', benefit: 'Moisturizing', risk: 'low' },
-  'Glycerin': { role: 'Humectant', benefit: 'Hydration', risk: 'low' },
-  'Aqua': { role: 'Base', benefit: 'Solvent', risk: 'low' },
-  'Phenoxyethanol': { role: 'Preservative', benefit: 'Product safety', risk: 'low' },
-  'Fragrance': { role: 'Additive', benefit: 'Scent', risk: 'high' },
-  'Alcohol Denat': { role: 'Solvent', benefit: 'Quick absorption', risk: 'high' },
-  'Parfum': { role: 'Additive', benefit: 'Scent', risk: 'high' },
-  'Vitamin C': { role: 'Active', benefit: 'Brightening', risk: 'low' },
-  'Benzoyl Peroxide': { role: 'Active', benefit: 'Acne-fighting', risk: 'moderate' },
-  'Lactic Acid': { role: 'Active', benefit: 'Gentle exfoliant', risk: 'moderate' },
-  'Dimethicone': { role: 'Emollient', benefit: 'Smoothing', risk: 'low' },
-  'Panthenol': { role: 'Soothing', benefit: 'Calming', risk: 'low' },
-  'Sodium Lauryl Sulfate': { role: 'Surfactant', benefit: 'Cleansing', risk: 'high' },
-}
-
-const CONFLICT_RULES = [
-  { pair: ['Retinol', 'Glycolic Acid'], warning: 'Retinol + AHA can cause severe irritation.' },
-  { pair: ['Retinol', 'Salicylic Acid'], warning: 'Retinol + BHA may over-exfoliate.' },
-  { pair: ['Retinol', 'Benzoyl Peroxide'], warning: 'BP can deactivate Retinol.' },
-  { pair: ['Retinol', 'Vitamin C'], warning: 'Can cause irritation.' },
-  { pair: ['Glycolic Acid', 'Salicylic Acid'], warning: 'Double acid use risks over-exfoliation.' },
-]
-
-function analyzeIngredients(ingredientsList, userProfile) {
-  const parsed = ingredientsList.map(name => {
-    const trimmed = name.trim()
-    const known = INGREDIENT_DB[trimmed]
-    return {
-      name: trimmed,
-      role: known?.role || 'Unknown',
-      benefit: known?.benefit || 'Not in database',
-      risk: known?.risk || 'unknown',
-      isSafe: known ? known.risk !== 'high' : true
-    }
-  })
-
-  const conflicts = []
-  const names = parsed.map(i => i.name)
-  for (const rule of CONFLICT_RULES) {
-    if (names.includes(rule.pair[0]) && names.includes(rule.pair[1]))
-      conflicts.push({ pair: rule.pair, warning: rule.warning })
+function base64ToBlob(dataURI) {
+  if (!dataURI) return null;
+  const splitDataURI = dataURI.split(',');
+  const byteString = splitDataURI[0].indexOf('base64') >= 0 ? atob(splitDataURI[1]) : decodeURI(splitDataURI[1]);
+  const mimeString = splitDataURI[0].split(':')[1].split(';')[0];
+  const ia = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
   }
-
-  const warnings = []
-  const sensitivities = userProfile?.skinProfile?.sensitivities || []
-  const reactivity = userProfile?.skinProfile?.reactivity || ''
-  for (const ing of parsed) {
-    if (sensitivities.includes('Fragrance') && (ing.name === 'Fragrance' || ing.name === 'Parfum'))
-      warnings.push({ ingredient: ing.name, message: `You're sensitive to fragrance.`, severity: 'high' })
-    if (sensitivities.includes('Alcohol') && ing.name === 'Alcohol Denat')
-      warnings.push({ ingredient: ing.name, message: `Contains drying alcohol.`, severity: 'high' })
-    if (reactivity === 'Easily irritated' && ing.risk === 'moderate')
-      warnings.push({ ingredient: ing.name, message: `${ing.name} may irritate reactive skin.`, severity: 'moderate' })
-  }
-
-  const highRisk = parsed.filter(i => i.risk === 'high').length
-  const modRisk = parsed.filter(i => i.risk === 'moderate').length
-  let score = 100 - (highRisk * 20) - (modRisk * 8) - (conflicts.length * 10) - (warnings.length * 3)
-  score = Math.max(10, Math.min(100, score))
-
-  let verdict = 'Safe'
-  if (score < 50) verdict = 'Avoid'
-  else if (score < 70) verdict = 'Use with Caution'
-  else if (score < 85) verdict = 'Mostly Safe'
-
-  return { ingredients: parsed, conflicts, warnings, verdict, score }
+  return new Blob([ia], { type: mimeString });
 }
 
 export default function CameraModal({ isOpen, onClose, onCapture }) {
@@ -163,26 +98,58 @@ export default function CameraModal({ isOpen, onClose, onCapture }) {
     setStep('analyzing')
     stopCamera()
 
-    const userProfile = storage.getUser()
+    const userProfile = storage.getUser() || {}
     const scanId = crypto.randomUUID()
     const resultId = crypto.randomUUID()
 
     const finalProductName = productName || 'Scanned Product'
-    const finalIngredients = ingredientsText
-      || 'Aqua, Glycerin, Niacinamide, Squalane, Sodium Hyaluronate, Ceramide NP, Phenoxyethanol'
+    
+    let analysis;
+    try {
+      const imageBlob = backCaptured ? base64ToBlob(backCaptured) : null;
+      analysis = await scanProduct({
+        imageFile: imageBlob,
+        ingredientText: ingredientsText,
+        profile: userProfile
+      });
+    } catch(err) {
+      console.error('AI Pipeline failed:', err);
+      analysis = {
+         ingredients: [],
+         score: 50,
+         safe: [],
+         risky: [],
+         explanation: 'Analysis could not be completed.'
+      }
+    }
 
-    const ingredientsList = finalIngredients.split(',').map(i => i.trim()).filter(Boolean)
-    const analysis = analyzeIngredients(ingredientsList, userProfile)
+    let verdict = 'Safe'
+    if (analysis.score < 50) verdict = 'Avoid'
+    else if (analysis.score < 70) verdict = 'Use with Caution'
+    else if (analysis.score < 85) verdict = 'Mostly Safe'
 
-    const result = { id: resultId, ...analysis }
+    const result = { 
+      id: resultId, 
+      ingredients: analysis.ingredients.map(name => ({ 
+        name, 
+        isSafe: analysis.safe.includes(name),
+        risk: analysis.risky.includes(name) ? 'high' : 'low'
+      })),
+      conflicts: [], 
+      warnings: analysis.risky.map(r => ({ ingredient: r, message: 'Flagged by AI analysis.', severity: 'moderate' })),
+      verdict, 
+      score: analysis.score,
+      explanation: analysis.explanation
+    }
+    
     const scan = {
       id: scanId,
       productName: finalProductName,
-      ingredientsRaw: finalIngredients,
+      ingredientsRaw: ingredientsText || 'Image Scanned',
       date: new Date().toISOString(),
       resultId,
-      status: analysis.verdict === 'Safe' || analysis.verdict === 'Mostly Safe' ? 'safe' :
-              analysis.verdict === 'Use with Caution' ? 'moderate' : 'danger'
+      status: verdict === 'Safe' || verdict === 'Mostly Safe' ? 'safe' :
+              verdict === 'Use with Caution' ? 'moderate' : 'danger'
     }
 
     await new Promise(r => setTimeout(r, 1500))
