@@ -29,11 +29,13 @@ export default function ResultsPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const scanData = await db.getScan(id)
+        const scanData = await db.getScan(id) 
         if (scanData) {
           setScan(scanData)
-          const resultData = await db.getResult(scanData.resultId)
+          let resultData = await db.getResult(scanData.resultId)
           if (resultData) {
+            // Apply normalization layer
+            resultData = normalizeResult(resultData)
             // Add greenwashing check
             const hasGreenwashing = checkGreenwashing(scanData, resultData)
             setData({ ...resultData, greenwashing: hasGreenwashing })
@@ -47,13 +49,35 @@ export default function ResultsPage() {
     fetchData()
   }, [id])
 
+  const normalizeResult = (aiData) => {
+    const safeData = aiData || {}
+    const ingredients = (safeData.ingredients || []).map(ing => ({
+      name: ing.name || 'Unknown',
+      benefit: ing.benefit || "Ingredient used in cosmetic formulations.",
+      isSafe: ing.risk !== "high",
+      risk: ing.risk || "unknown",
+      role: ing.role || "Unknown"
+    }))
+
+    return {
+      score: safeData.score || 0,
+      verdict: safeData.verdict || "Unknown",
+      ingredients,
+      warnings: safeData.warnings || [],
+      conflicts: safeData.conflicts || [],
+      explanation: safeData.explanation || null
+    }
+  }
+
   const checkGreenwashing = (scan, result) => {
+    if (!scan?.productName || !result?.ingredients) return null;
     const name = scan.productName.toLowerCase()
     const isNaturalClaim = name.includes('natural') || name.includes('organic') || name.includes('pure') || name.includes('clean')
-    const hasIrritants = result.ingredients.some(i => i.risk === 'high' || (i.risk === 'moderate' && i.role === 'Additive'))
+    const hasIrritants = result.ingredients.some(i => i.isSafe === false)
     
     if (isNaturalClaim && hasIrritants) {
-      return `This product claims to be '${isNaturalClaim ? 'clean/natural' : ''}' but contains potential synthetic irritants like ${result.ingredients.find(i => i.risk === 'high')?.name || 'fragrance'}.`
+      const badIng = result.ingredients.find(i => i.isSafe === false)
+      return `This product claims to be 'clean/natural' but contains potential synthetic irritants like ${badIng?.name || 'fragrance'}.`
     }
     return null
   }
