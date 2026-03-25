@@ -1,6 +1,6 @@
 import { extractTextFromImage } from '../ai/vlmOCR';
 import { parseIngredients } from '../utils/ingredientParser';
-import { calculateCompatibility } from '../utils/scoreCalculator';
+import { analyzeCompatibility } from './compatibilityService';
 import { generateExplanation } from '../ai/compatibilityLLM';
 
 export const scanProduct = async ({ imageFile, ingredientText, profile }) => {
@@ -18,14 +18,15 @@ export const scanProduct = async ({ imageFile, ingredientText, profile }) => {
     }
 
     console.log('Pipeline Step 2: Parsing ingredients...');
-    const ingredients = parseIngredients(rawText);
+    const rawIngredients = parseIngredients(rawText);
 
-    if (!ingredients.length) {
+    if (!rawIngredients.length) {
       throw new Error('Could not detect or parse any ingredients.');
     }
 
-    console.log('Pipeline Step 3: Calculating compatibility score...');
-    const { score, safe, risky } = calculateCompatibility(ingredients, profile);
+    console.log('Pipeline Step 3: Analyzing ingredient compatibility mapping...');
+    const compatibilityAnalysis = analyzeCompatibility(rawIngredients, profile);
+    const { score, verdict, ingredients, warnings, conflicts, safe, risky } = compatibilityAnalysis;
 
     console.log('Pipeline Step 4: Generating explanation from LLM...');
     const explanation = await generateExplanation({
@@ -37,8 +38,11 @@ export const scanProduct = async ({ imageFile, ingredientText, profile }) => {
 
     console.log('Pipeline Complete!');
     return {
-      ingredients,
+      ingredients,   // New rich objects mapped internally by analyzeCompatibility
       score,
+      verdict,
+      warnings,
+      conflicts,
       safe,
       risky,
       explanation
@@ -48,3 +52,4 @@ export const scanProduct = async ({ imageFile, ingredientText, profile }) => {
     throw error;
   }
 };
+

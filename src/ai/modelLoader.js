@@ -1,4 +1,4 @@
-import { RunAnywhere } from 'runanywhere';
+import { RunAnywhere } from './runanywhere';
 
 let llmInstance = null;
 let vlmInstance = null;
