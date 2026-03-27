@@ -8,9 +8,10 @@ I will give you a block of noisy OCR text from a product label.
 
 CRITICAL INSTRUCTIONS:
 1. IDENTIFY: Every legitimate chemical or botanical cosmetic ingredient.
-2. DISCARD: Non-ingredient fragments (e.g., 'hk:', 'TIC', 'HEN'), marketing slogans, brand names, and alphanumeric noise.
-3. FORMAT: Return a simple comma-separated list.
-4. QUALITY: If an item doesn't look like a real cosmetic chemical, EXCLUDE it.
+2. STRIP: Proactively remove asterisks (*), and introductory words like "ingredients:" or "contains:" wherever they appear.
+3. DISCARD: Non-ingredient fragments (e.g., 'hk:', 'TIC', 'HEN'), marketing slogans, brand names, and alphanumeric noise.
+4. FORMAT: Return a simple comma-separated list.
+5. QUALITY: If an item doesn't look like a real cosmetic chemical, EXCLUDE it.
 
 RETURN ONLY THE CLEAN LIST. NO INTRO OR OUTRO.
 
@@ -29,9 +30,10 @@ INPUT TEXT:
     // Normalize: Lowercase, Split, Deduplicate, Clean
     const uniqueIngs = [...new Set(
       rawList.split(/[,;\n]/)
-        .map(s => s.trim().toLowerCase())
+        .map(s => s.trim().toLowerCase().replace(/[*]/g, '').replace(/ingredients[:\-]?|contains[:\-]?/gi, '').trim())
         .filter(s => s.length > 2 && /[a-z]/.test(s)) // Must have letters and be reasonable length
     )];
+
 
     return uniqueIngs.join(', ');
   } catch (error) {

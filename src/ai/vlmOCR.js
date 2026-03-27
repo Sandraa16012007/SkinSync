@@ -68,10 +68,11 @@ Return ONLY the comma-separated ingredient list.`;
     
     // Final cleansing of combined noisy text
     const cleanText = combinedText
-      .replace(/[®™©]/g, '') 
+      .replace(/[®™©*]/g, '') // Scrub symbols and asterisks
       .replace(/[\u2022\u2023\u25E6\u2022\u2219\u25CF]/g, ', ') 
       .replace(/\s{2,}/g, ' ') 
       .trim();
+
 
     return cleanText;
 

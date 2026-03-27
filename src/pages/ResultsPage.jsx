@@ -51,31 +51,45 @@ export default function ResultsPage() {
 
   const normalizeResult = (aiData) => {
     const safeData = aiData || {}
+    
+    // Universal Clinical Scrubber: Removes OCR symbols, administrative prefixes and noise
+    const scrub = (str) => {
+      if (typeof str !== 'string') return str;
+      return str
+        .replace(/\*/g, '') // Remove asterisks
+        .replace(/ingredients[:\-]?|contains[:\-]?/gi, '') // Remove prefixes anywhere
+        .replace(/^(a|the|of)\s+/i, '') // Remove random leading articles
+        .replace(/\s{2,}/g, ' ') // Collapse spaces
+        .trim();
+    };
+
     const ingredients = (safeData.ingredients || []).map(ing => {
-      // Unbox the nested object if corrupted by the old save logic
       const actualIng = (ing.name && typeof ing.name === 'object') ? ing.name : ing;
       const risk = actualIng.risk || "low";
       return {
-        name: actualIng.name || 'Unknown',
-        benefit: actualIng.benefit || "Ingredient used in cosmetic formulations.",
-        warning: actualIng.warning || null,
+        name: scrub(actualIng.name || 'Unknown'),
+        benefit: scrub(actualIng.benefit || "Ingredient used in cosmetic formulations."),
+        warning: scrub(actualIng.warning || null),
         isSafe: actualIng.safety_status ? actualIng.safety_status === 'Safe' : (risk !== "high"),
         risk: risk,
         role: actualIng.role || "Unknown"
-
       }
     })
-
 
     return {
       score: safeData.score || 0,
       verdict: safeData.verdict || "Unknown",
       ingredients,
-      warnings: safeData.warnings || [],
-      conflicts: safeData.conflicts || [],
-      explanation: safeData.explanation || null
+      warnings: (safeData.warnings || []).map(w => ({ 
+        ...w, 
+        ingredient: scrub(w.ingredient || 'Personal'),
+        message: scrub(w.message) 
+      })),
+      conflicts: (safeData.conflicts || []).map(c => ({ ...c, risk: scrub(c.risk) })),
+      explanation: scrub(safeData.explanation || null)
     }
   }
+
 
   const checkGreenwashing = (scan, result) => {
     if (!scan?.productName || !result?.ingredients) return null;
