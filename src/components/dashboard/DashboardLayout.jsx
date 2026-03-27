@@ -17,7 +17,7 @@ import AddProductModal from '../modals/AddProductModal'
 import { db } from '../../utils/db'
 import { storage } from '../../utils/storage'
 
-export default function DashboardLayout({ onboardingComplete = false, onCompleteOnboarding, onLogout, onNavigate, onStartAnalysis }) {
+export default function DashboardLayout({ onboardingComplete = false, onCompleteOnboarding, onLogout, onDeleteAccount, onNavigate, onStartAnalysis }) {
   const [activeModals, setActiveModals] = useState({
     settings: false,
     camera: false,
@@ -55,6 +55,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
 
   const handleSettingsAction = (id) => {
     if (id === 'logout') onLogout()
+    if (id === 'delete-account') onDeleteAccount()
     if (id === 'edit-profile') onCompleteOnboarding()
     toggleModal('settings', false)
   }

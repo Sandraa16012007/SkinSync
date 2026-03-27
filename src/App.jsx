@@ -60,6 +60,15 @@ function MainApp() {
     navigate('/')
   }
 
+  const handleDeleteAccount = () => {
+    if (window.confirm('Are you sure you want to delete your account? This action is permanent.')) {
+      storage.deleteAccount()
+      setIsLoggedIn(false)
+      setOnboardingComplete(false)
+      navigate('/')
+    }
+  }
+
   const handleStartAnalysis = (id = 'new-result') => {
     setIsAnalyzing(true)
     setTimeout(() => {
@@ -116,6 +125,7 @@ function MainApp() {
             onboardingComplete={onboardingComplete}
             onCompleteOnboarding={() => navigate('/onboarding')}
             onLogout={handleLogout}
+            onDeleteAccount={handleDeleteAccount}
             onNavigate={(view) => view === 'landing' ? navigate('/') : navigate(`/${view}`)}
             onStartAnalysis={handleStartAnalysis}
           />
