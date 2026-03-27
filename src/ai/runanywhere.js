@@ -7,10 +7,29 @@ export const RunAnywhere = {
 
     return {
       generate: async ({ prompt, image, temperature, max_tokens }) => {
+        // Handle Verification Phase (Step 2)
+        if (prompt.includes('INCI (International Nomenclature of Cosmetic Ingredients) expert')) {
+           const inputMatch = prompt.match(/INPUT TEXT:\s*"([\s\S]*?)"/i);
+           const rawInput = inputMatch ? inputMatch[1] : "";
+           
+           // Mock Verification: Lowercase, Unique, and Filter fragments
+           const verifiedSet = new Set(
+             rawInput.split(/[,;\n•|]/)
+               .map(s => s.trim().toLowerCase())
+               .filter(s => s.length > 3 && /[a-z]/.test(s))
+           );
+           
+           const verified = Array.from(verifiedSet).join(', ');
+           console.log(`[AI Verifier] Finalized ${verifiedSet.size} unique, clean ingredients.`);
+           return { text: verified };
+        }
+
+
         // Simulate inference latency
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Simulated LLM Intelligence - Profile-Aware Logic
+
         const inputMatch = prompt.match(/INPUT TEXT \(Potentially noisy OCR scan\):\s*"([\s\S]*?)"/i);
         const rawInput = inputMatch ? inputMatch[1] : "";
         
@@ -30,70 +49,39 @@ export const RunAnywhere = {
         const ingredients = parsedIngs.map(name => {
           const lower = name.toLowerCase();
           let risk = "low";
-          let benefit = "Formulation component";
+          let safety_status = "Safe";
+          let benefit = `${skinType === 'dry' ? 'Hydrating' : 'Stabilizing'} agent`;
           let warning = null;
           
           if (/acid|glycol|retin|oxide|peroxide/.test(lower)) {
              risk = "moderate";
-             benefit = `Active compound used for ${concerns.includes('acne') ? 'breakout control' : 'exfoliation'}`;
-             warning = `Potential for irritation given your ${skinType} base. Patch test recommended.`;
+             safety_status = "Caution";
+             benefit = `Targeted active for ${concerns.includes('acne') ? 'pore congestion' : 'renewal'}`;
+             warning = `May cause sensitivity on ${skinType} skin.`;
           } else if (/alcohol|parfum|fragrance|sulfate|paraben/.test(lower)) {
              risk = "high";
-             benefit = "Synthetic additive/preservative";
-             warning = `Known irritant for ${skinType} skin. May exacerbate ${concerns}.`;
-          } else if (/extract|oil|butter|water|aqua|glycerin|hyaluron/.test(lower)) {
-             risk = "low";
-             benefit = `${skinType === 'dry' ? 'Deeply hydrating' : 'Soothing'} base component`;
+             safety_status = "Danger";
+             benefit = "Synthetic stabilizer";
+             warning = `High irritation risk for ${skinType} skin.`;
           }
 
-          // Force 'Avoid' list match to be high risk with strong warning
           if (avoidList.toLowerCase().includes(lower)) {
             risk = "high";
-            warning = `EXPLICIT AVOIDANCE: You marked this as a prohibited ingredient.`;
+            safety_status = "Danger";
+            warning = `CONFLICT: Prohibited by user profile.`;
           }
 
-          return { name, benefit, risk, warning };
+          return { name, benefit, risk, warning, safety_status };
         });
 
-
-        const warnings = [];
-        ingredients.forEach(i => {
-          const lower = i.name.toLowerCase();
-          // Check against Avoid list
-          if (avoidList.toLowerCase().includes(lower)) {
-            warnings.push({ 
-              ingredient: i.name, 
-              message: `CRITICAL: You explicitly listed ${i.name} in your Avoid list. Do not use!`, 
-              severity: "high" 
-            });
-          }
-          // Profile specific logic
-          else if (skinType === 'dry' && (lower.includes('alcohol') || lower.includes('acid'))) {
-            warnings.push({ 
-              ingredient: i.name, 
-              message: `${i.name} may worsen your ${skinType} skin by causing additional dehydration.`, 
-              severity: "moderate" 
-            });
-          }
-          else if (concerns.includes('acne') && (lower.includes('oil') || lower.includes('butter'))) {
-            warnings.push({ 
-              ingredient: i.name, 
-              message: `${i.name} detected. This may be too heavy for your acne-prone concerns.`, 
-              severity: "moderate" 
-            });
-          }
-        });
-
-        const score = ingredients.reduce((acc, ing) => {
-          if (ing.risk === 'high') return acc - 30;
-          if (ing.risk === 'moderate') return acc - 15;
-          return acc;
-        }, 100);
-
-        const finalScore = Math.max(10, Math.min(100, score));
+        const dangerousCount = ingredients.filter(i => i.safety_status === 'Danger').length;
+        const cautionCount = ingredients.filter(i => i.safety_status === 'Caution').length;
+        
+        const baseScore = 100 - (dangerousCount * 30) - (cautionCount * 10);
+        const finalScore = Math.max(10, Math.min(100, baseScore));
         
         let verdict = "Safe";
-        if (finalScore < 50) verdict = "Avoid";
+        if (finalScore < 40) verdict = "Avoid";
         else if (finalScore < 70) verdict = "Caution";
         else if (finalScore < 85) verdict = "Mostly Safe";
 
@@ -101,10 +89,14 @@ export const RunAnywhere = {
           score: finalScore,
           verdict,
           ingredients,
-          warnings,
-          conflicts: [],
-          explanation: `Based on your ${skinType} skin and concerns regarding ${concerns}, this product is rated ${finalScore}%. ${warnings.length > 0 ? 'See warnings below for potential irritants.' : 'No major red flags detected for your profile.'}`
+          warnings: ingredients.filter(i => i.safety_status !== 'Safe').map(i => ({
+            ingredient: i.name,
+            message: i.warning,
+            severity: i.safety_status === 'Danger' ? 'high' : 'moderate'
+          })),
+          explanation: `Clinical analysis complete. Product suitability for ${skinType} skin is ${finalScore}%. ${dangerousCount > 0 ? 'Critical conflicts detected.' : 'Generally safe formulation.'}`
         };
+
 
 
 

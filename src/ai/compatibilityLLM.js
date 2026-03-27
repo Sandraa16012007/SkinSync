@@ -1,6 +1,48 @@
 import { loadModels } from './modelLoader';
 
+export const verifyIngredients = async (rawText) => {
+  const { llm } = await loadModels();
+  
+  const prompt = `You are an INCI (International Nomenclature of Cosmetic Ingredients) expert.
+I will give you a block of noisy OCR text from a product label.
+
+CRITICAL INSTRUCTIONS:
+1. IDENTIFY: Every legitimate chemical or botanical cosmetic ingredient.
+2. DISCARD: Non-ingredient fragments (e.g., 'hk:', 'TIC', 'HEN'), marketing slogans, brand names, and alphanumeric noise.
+3. FORMAT: Return a simple comma-separated list.
+4. QUALITY: If an item doesn't look like a real cosmetic chemical, EXCLUDE it.
+
+RETURN ONLY THE CLEAN LIST. NO INTRO OR OUTRO.
+
+INPUT TEXT:
+"${rawText}"`;
+
+  try {
+    console.log('AI Verifier: Hardening OCR text into verified INCI list...');
+    const response = await llm.generate({
+      prompt: prompt,
+      temperature: 0, 
+    });
+
+    const rawList = typeof response === 'string' ? response : (response.text || response.content || '');
+    
+    // Normalize: Lowercase, Split, Deduplicate, Clean
+    const uniqueIngs = [...new Set(
+      rawList.split(/[,;\n]/)
+        .map(s => s.trim().toLowerCase())
+        .filter(s => s.length > 2 && /[a-z]/.test(s)) // Must have letters and be reasonable length
+    )];
+
+    return uniqueIngs.join(', ');
+  } catch (error) {
+    console.warn('AI Verification failed, using fallback cleaning...');
+    return rawText.toLowerCase().replace(/[®™©]/g, '').trim(); 
+  }
+};
+
+
 export const generateCompatibilityReport = async (rawIngredientsText, profile) => {
+
   const { llm } = await loadModels();
 
   const skinType = profile?.skinType || 'normal';
@@ -19,46 +61,41 @@ INPUT TEXT (Potentially noisy OCR scan):
 "${rawIngredientsText}"
 
 DIRECTIONS:
-1. RECONSTRUCT: Identify actual cosmetic ingredients in the NOISY TEXT. 
-   - Discard symbols (®, ™, ©, •), brand names, and marketing claims.
-   - Strip out non-alphabetic noise and bullet points.
-   - Fix OCR typos (e.g., 'Watar' -> 'Water').
-   - Result must be a list of recognizable chemical or botanical terms.
-2. EVALUATE: Analyze these ingredients specifically for the user's ${skinType} skin and ${concerns}.
-3. JSON RETURN: Return a valid JSON object matching this structure:
+1. RECONSTRUCT & CLEAN: Use your knowledge of INCI (International Nomenclature of Cosmetic Ingredients) to fix the noisy OCR text below. 
+   - Transcribe fragments into full chemical names (e.g., 'Glycer' -> 'Glycerin').
+   - Remove marketing fluff, trademark symbols, and non-ingredient noise.
+2. MOLECULAR VERIFICATION: Cross-reference every identified ingredient against the user's ${skinType} skin and ${concerns}.
+3. JSON EVALUATION: Return a strict JSON object with:
 {
-  "score": <number 0-100 indicating total compatibility>,
+  "score": <0-100 based on clinical suitability>,
   "verdict": "<Safe | Mostly Safe | Use with Caution | Avoid>",
   "ingredients": [
     {
-      "name": "<ingredient name>",
-      "benefit": "<Precise explanation of how this chemical behaves for ${skinType} skin and ${concerns}>",
-      "warning": "<If risk is moderate/high, explain the specific anatomical risk for ${skinType} + ${concerns}. Else null>",
-      "risk": "<low | moderate | high>"
+      "name": "<Chemical Name>",
+      "benefit": "<Precise dermatological benefit for ${skinType}>",
+      "warning": "<Why this risks triggering ${concerns} (if any)>",
+      "risk": "<low | moderate | high>",
+      "safety_status": "<Safe | Caution | Danger>"
     }
   ],
-
   "warnings": [
     {
       "ingredient": "<Name>",
-      "message": "<Explanation of why this is problematic for THIS SPECIFIC USER'S skin type or concerns>",
+      "message": "<Clinical explanation of risk for this user>",
       "severity": "<moderate | high>"
     }
   ],
-  "conflicts": [
-    {
-      "pair": ["<ing1>", "<ing2>"],
-      "warning": "<Why these two interact poorly or cause irritation together>"
-    }
-  ],
-  "explanation": "<Short, punchy summary of the product's overall suitablity. Mention if the product is a good match for ${concerns} or if it risks triggering ${skinType} issues.>"
+  "explanation": "<Short, clinical summary of why this score was given, citing specific profile conflicts.>"
 }
 
-CONSTRAINTS:
-1. Every ingredient must have a 'benefit' tailored to the user profile. No generic descriptions.
-2. If an ingredient is in the 'Avoid' list, the verdict should be 'Avoid' or 'Use with Caution'.
-3. Penalize heavily for alcohols in dry skin or high comedogenicity in acne-prone skin.
-4. Return ONLY raw JSON. No markdown blocks.`;
+SCORING RUBRIC:
+- 100: Perfectly tailored for ${skinType} and actively addresses ${concerns}.
+- 70-85: Generally safe, but contains mild irritants or fragrance.
+- 40-60: Contains ingredients explicitly linked to worsening ${concerns}.
+- <40: Contains ingredients in the 'Avoid' list or highly comedogenic/irritating for these user traits.
+
+Return RAW JSON only. No markdown. No conversational text.`;
+
 
   try {
     console.log('AI Engine: Triggering LLM analysis for', rawIngredientsText.length, 'characters of input text...');

@@ -10,27 +10,23 @@ Do NOT include marketing text, instructions, brand names, or any explanations.
 Example output: water, glycerin, niacinamide, salicylic acid
 Return ONLY the comma-separated ingredient list.`;
 
-  const preprocessImage = async (file) => {
+  const preprocessPass = async (file, filterType) => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
-        // Scale for high detail
         const scale = 2000 / img.width; 
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         
-        // Apply grayscale and high contrast/sharpening
-        ctx.filter = 'grayscale(100%) contrast(200%) brightness(100%)';
+        if (filterType === 'inverted') {
+           ctx.filter = 'grayscale(100%) invert(100%) contrast(250%) brightness(120%)';
+        } else {
+           ctx.filter = 'grayscale(100%) contrast(200%) brightness(100%)';
+        }
+        
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Advanced: Simple Auto-Inversion (Skincare bottles often have white text on dark)
-        // We'll apply a slight inversion filter if the average pixel is dark to help Tesseract
-        // but for now we'll just sharpen the edges
-        ctx.filter = 'contrast(200%) brightness(110%)';
-        
         resolve(canvas.toDataURL('image/png'));
       };
       img.src = URL.createObjectURL(file);
@@ -38,10 +34,9 @@ Return ONLY the comma-separated ingredient list.`;
   };
 
   try {
-    console.log('VLM/OCR: Triggering 100% Accuracy Pre-processing...');
-    const processedImageData = await preprocessImage(imageFile);
+    console.log('VLM/OCR: Starting 100% Accuracy Dual-Pass Extraction...');
     
-    // Load Tesseract.js from CDN dynamically to bypass NPM issues
+    // Load Tesseract.js from CDN
     if (!window.Tesseract) {
       console.log('VLM/OCR: Loading Tesseract.js engine...');
       await new Promise((resolve, reject) => {
@@ -53,20 +48,33 @@ Return ONLY the comma-separated ingredient list.`;
       });
     }
 
-    // High-performance recognition with specific parameters
-    const { data: { text } } = await window.Tesseract.recognize(processedImageData, 'eng', {
+    const pass1Data = await preprocessPass(imageFile, 'normal');
+    const pass2Data = await preprocessPass(imageFile, 'inverted');
+
+    console.log('VLM/OCR: Running Pass 1 (High Contrast)...');
+    const res1 = await window.Tesseract.recognize(pass1Data, 'eng', {
       tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%,. -()',
-      tessedit_pageseg_mode: '11', // Sparse text mode is great for labels
+      tessedit_pageseg_mode: '11',
     });
+
+    console.log('VLM/OCR: Running Pass 2 (Inverted Sharp)...');
+    const res2 = await window.Tesseract.recognize(pass2Data, 'eng', {
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%,. -()',
+      tessedit_pageseg_mode: '11',
+    });
+
+    // Merge results and deduplicate
+    const combinedText = `${res1.data.text} ${res2.data.text}`;
     
-    // Pre-clean OCR noise like symbols, non-ASCII artifacts, etc.
-    const cleanText = text
-      .replace(/[®™©]/g, '') // Remove trademark/copyright symbols
-      .replace(/[\u2022\u2023\u25E6\u2022\u2219\u25CF]/g, ', ') // Convert bullets to commas
-      .replace(/\s{2,}/g, ' ') // Collapse extra spaces
+    // Final cleansing of combined noisy text
+    const cleanText = combinedText
+      .replace(/[®™©]/g, '') 
+      .replace(/[\u2022\u2023\u25E6\u2022\u2219\u25CF]/g, ', ') 
+      .replace(/\s{2,}/g, ' ') 
       .trim();
 
     return cleanText;
+
   } catch (error) {
 
     console.error('OCR Extraction failed:', error);

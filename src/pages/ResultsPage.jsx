@@ -59,9 +59,10 @@ export default function ResultsPage() {
         name: actualIng.name || 'Unknown',
         benefit: actualIng.benefit || "Ingredient used in cosmetic formulations.",
         warning: actualIng.warning || null,
-        isSafe: actualIng.isSafe !== undefined ? actualIng.isSafe : risk !== "high",
+        isSafe: actualIng.safety_status ? actualIng.safety_status === 'Safe' : (risk !== "high"),
         risk: risk,
         role: actualIng.role || "Unknown"
+
       }
     })
 
