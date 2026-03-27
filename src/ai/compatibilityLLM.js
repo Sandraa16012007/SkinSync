@@ -1,53 +1,67 @@
 import { loadModels } from './modelLoader';
 
-export const generateCompatibilityReport = async (ingredients, profile) => {
+export const generateCompatibilityReport = async (rawIngredientsText, profile) => {
   const { llm } = await loadModels();
 
   const skinType = profile?.skinType || 'normal';
   const concerns = profile?.concerns?.length ? profile.concerns.join(', ') : 'None';
   const avoid = profile?.avoid?.length ? profile.avoid.join(', ') : 'None';
 
-  const prompt = `You are an expert dermatologist AI.
-Analyze the skincare ingredients for a patient with ${skinType} skin.
-Concerns: ${concerns}. Avoid List: ${avoid}.
+  const prompt = `You are a clinical dermatologist and cosmetic chemist AI.
+Your task is to analyze skincare ingredients against a specific user profile.
 
-Ingredients: ${ingredients.join(', ')}
+USER PROFILE:
+- Skin Type: ${skinType}
+- Specific Concerns: ${concerns}
+- Ingredients to Avoid: ${avoid}
 
-Evaluate the compatibility specifically for this user's profile and return ONLY a valid JSON object matching exactly this structure:
+INPUT TEXT (Potentially noisy OCR scan):
+"${rawIngredientsText}"
+
+DIRECTIONS:
+1. RECONSTRUCT: Identify actual cosmetic ingredients in the NOISY TEXT. 
+   - Discard symbols (®, ™, ©, •), brand names, and marketing claims.
+   - Strip out non-alphabetic noise and bullet points.
+   - Fix OCR typos (e.g., 'Watar' -> 'Water').
+   - Result must be a list of recognizable chemical or botanical terms.
+2. EVALUATE: Analyze these ingredients specifically for the user's ${skinType} skin and ${concerns}.
+3. JSON RETURN: Return a valid JSON object matching this structure:
 {
-  "score": <number 0-100>,
+  "score": <number 0-100 indicating total compatibility>,
   "verdict": "<Safe | Mostly Safe | Use with Caution | Avoid>",
   "ingredients": [
     {
       "name": "<ingredient name>",
-      "benefit": "<How this ingredient specifically interacts with this patient's ${skinType} skin and ${concerns}>",
+      "benefit": "<Precise explanation of how this chemical behaves for ${skinType} skin and ${concerns}>",
+      "warning": "<If risk is moderate/high, explain the specific anatomical risk for ${skinType} + ${concerns}. Else null>",
       "risk": "<low | moderate | high>"
     }
   ],
+
   "warnings": [
     {
-      "ingredient": "<ingredient name causing the warning, if any>",
-      "message": "<Detailed warning explaining the specific risk for this user's ${skinType} skin or ${concerns}>",
+      "ingredient": "<Name>",
+      "message": "<Explanation of why this is problematic for THIS SPECIFIC USER'S skin type or concerns>",
       "severity": "<moderate | high>"
     }
   ],
   "conflicts": [
     {
-      "pair": ["<ingredient 1>", "<ingredient 2>"],
-      "warning": "<conflict explanation>"
+      "pair": ["<ing1>", "<ing2>"],
+      "warning": "<Why these two interact poorly or cause irritation together>"
     }
   ],
-  "explanation": "<Short professional dermatologist summary setting the product's safety for this specific user.>"
+  "explanation": "<Short, punchy summary of the product's overall suitablity. Mention if the product is a good match for ${concerns} or if it risks triggering ${skinType} issues.>"
 }
 
-CRITICAL: The 'benefit' field MUST NOT be a generic description. It must explain the effect on ${skinType} skin or how it helps/hurts with ${concerns}.
-Example: Instead of "Humectant", use "Draws moisture to help with your dehydration".
-
-Ensure all ingredients listed are included in the 'ingredients' array.
-Focus on actual dermatological science. Penalize known irritants for sensitive/dry skin, or comedogenic ingredients for acne-prone skin. Bonus points for humectants/ceramides protecting barrier health.
-DO NOT wrap the response in markdown blocks like \`\`\`json. Return raw JSON.`;
+CONSTRAINTS:
+1. Every ingredient must have a 'benefit' tailored to the user profile. No generic descriptions.
+2. If an ingredient is in the 'Avoid' list, the verdict should be 'Avoid' or 'Use with Caution'.
+3. Penalize heavily for alcohols in dry skin or high comedogenicity in acne-prone skin.
+4. Return ONLY raw JSON. No markdown blocks.`;
 
   try {
+    console.log('AI Engine: Triggering LLM analysis for', rawIngredientsText.length, 'characters of input text...');
     const response = await llm.generate({
       prompt: prompt,
       temperature: 0.1,
@@ -74,18 +88,23 @@ DO NOT wrap the response in markdown blocks like \`\`\`json. Return raw JSON.`;
   } catch (error) {
     console.error('LLM JSON Generation Error:', error);
     // Fallback if LLM fails or replies with invalid JSON
+    const fallbackList = typeof rawIngredientsText === 'string' 
+      ? rawIngredientsText.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 2)
+      : [];
+      
     return {
       score: 50,
       verdict: "Unknown",
-      ingredients: ingredients.map(name => ({ name, benefit: "Ingredient used in formulation", risk: "low" })),
+      ingredients: fallbackList.map(name => ({ name, benefit: "Ingredient detected in scan", risk: "low" })),
       warnings: [{ ingredient: "System", message: "AI evaluation failed to parse properly.", severity: "high" }],
       conflicts: [],
-      explanation: "We could not generate an AI response. Please try again.",
-      safe: ingredients,
+      explanation: "We could not generate a valid AI response. Using local fallback parsing.",
+      safe: fallbackList,
       risky: []
     };
   }
 };
+
 
 // Deprecated fallback for older integrations
 export const generateExplanation = async () => "Deprecated";

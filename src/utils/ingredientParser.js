@@ -1,10 +1,15 @@
 export const parseIngredients = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return [];
 
-  return rawText
+  // Remove "ingredients:" prefix and common noise
+  const cleanBase = rawText
     .toLowerCase()
-    .replace(/^ingredients\s*:\s*/, '') // Remove "ingredients:" prefix
-    .split(',')
-    .map(item => item.trim())
-    .filter(item => item.length > 0);
+    .replace(/^(ingredients|composition|contains)\s*:\s*/i, '')
+    .replace(/[\n\r]/g, ', '); // Convert newlines to commas
+
+  return cleanBase
+    .split(/[,.;•]/) // Split by common delimiters (comma, dot, semicolon, bullet)
+    .map(item => item.replace(/[*_]/g, '').trim()) // Remove markdown bold/italic noise
+    .filter(item => item.length > 1); // Filter out single chars or empty noise
 };
+

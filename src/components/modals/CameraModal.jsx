@@ -123,35 +123,28 @@ export default function CameraModal({ isOpen, onClose, onCapture }) {
       }
     }
 
-    let verdict = 'Safe'
-    if (analysis.score < 50) verdict = 'Avoid'
-    else if (analysis.score < 70) verdict = 'Use with Caution'
-    else if (analysis.score < 85) verdict = 'Mostly Safe'
-
     const result = { 
       id: resultId, 
-      ingredients: analysis.ingredients.map(ing => ({ 
-        name: ing.name || ing, 
-        benefit: ing.benefit,
-        isSafe: typeof ing === 'string' ? analysis.safe.includes(ing) : analysis.safe.includes(ing.name),
-        risk: ing.risk || (typeof ing === 'string' ? (analysis.risky.includes(ing) ? 'high' : 'low') : 'low')
+      ...analysis,
+      ingredients: (analysis.ingredients || []).map(ing => ({
+        name: ing.name || 'Unknown',
+        benefit: ing.benefit || 'Formulation component',
+        risk: ing.risk || 'low',
+        isSafe: ing.risk !== 'high'
       })),
-      conflicts: analysis.conflicts || [], 
-      warnings: analysis.warnings?.length ? analysis.warnings : analysis.risky.map(r => ({ ingredient: r, message: 'Flagged by AI analysis.', severity: 'moderate' })),
-      verdict: analysis.verdict || verdict, 
-      score: analysis.score,
-      explanation: analysis.explanation
+      verdict: analysis.verdict,
     }
-    
+
     const scan = {
       id: scanId,
       productName: finalProductName,
       ingredientsRaw: ingredientsText || 'Image Scanned',
       date: new Date().toISOString(),
       resultId,
-      status: verdict === 'Safe' || verdict === 'Mostly Safe' ? 'safe' :
-              verdict === 'Use with Caution' ? 'moderate' : 'danger'
+      status: (analysis.verdict || 'Safe').toLowerCase().includes('safe') ? 'safe' :
+              (analysis.verdict || '').toLowerCase().includes('caution') ? 'moderate' : 'danger'
     }
+
 
     await new Promise(r => setTimeout(r, 1500))
     await db.addResult(result)

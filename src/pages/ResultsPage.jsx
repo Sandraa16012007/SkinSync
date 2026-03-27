@@ -54,14 +54,17 @@ export default function ResultsPage() {
     const ingredients = (safeData.ingredients || []).map(ing => {
       // Unbox the nested object if corrupted by the old save logic
       const actualIng = (ing.name && typeof ing.name === 'object') ? ing.name : ing;
+      const risk = actualIng.risk || "low";
       return {
         name: actualIng.name || 'Unknown',
         benefit: actualIng.benefit || "Ingredient used in cosmetic formulations.",
-        isSafe: actualIng.risk !== "high",
-        risk: actualIng.risk || "unknown",
+        warning: actualIng.warning || null,
+        isSafe: actualIng.isSafe !== undefined ? actualIng.isSafe : risk !== "high",
+        risk: risk,
         role: actualIng.role || "Unknown"
       }
     })
+
 
     return {
       score: safeData.score || 0,

@@ -75,26 +75,39 @@ export function VerdictBadge({ status, score }) {
   )
 }
 
-export function IngredientCard({ name, benefit, safe }) {
+export function IngredientCard({ name, benefit, safe, warning }) {
   return (
     <motion.div
       whileHover={{ y: -8 }}
-      className="p-6 bg-white rounded-3xl border border-border/40 shadow-sm hover:shadow-xl transition-all space-y-4 flex flex-col"
+      className={`p-6 bg-white rounded-3xl border ${!safe ? 'border-red-100 bg-red-50/20' : 'border-border/40'} shadow-sm hover:shadow-xl transition-all space-y-4 flex flex-col`}
     >
       <div className="flex-1 space-y-2">
-         <h4 className="font-bold text-text text-lg">{name}</h4>
+         <div className="flex items-center justify-between gap-2">
+            <h4 className="font-bold text-text text-lg">{name}</h4>
+            {!safe && <AlertTriangle className="text-red-500" size={18} />}
+         </div>
          <p className="text-sm font-medium text-text-muted leading-relaxed">
            {benefit}
          </p>
+         
+         {!safe && warning && (
+           <div className="mt-3 p-3 bg-red-50 rounded-2xl border border-red-100 flex items-start gap-2">
+              <ShieldAlert size={14} className="text-red-600 mt-0.5" />
+              <p className="text-[11px] font-bold text-red-900 leading-tight">
+                {warning}
+              </p>
+           </div>
+         )}
       </div>
       
-      <div className={`mt-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wider ${safe ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-primary/5 text-primary border border-primary/10'}`}>
-         {safe ? <CheckCircle2 size={12} /> : <Sparkles size={12} />}
-         {safe ? 'SAFE FOR YOUR SKIN' : 'ACTIVE INGREDIENT'}
+      <div className={`mt-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wider ${safe ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-500 text-white shadow-lg shadow-red-200'}`}>
+         {safe ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+         {safe ? 'SAFE FOR YOUR SKIN' : 'HARMFUL FOR YOUR PROFILE'}
       </div>
     </motion.div>
   )
 }
+
 
 export function ConflictCard({ combo, risk, solution }) {
   return (
