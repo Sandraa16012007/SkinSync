@@ -37,6 +37,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Global cursor pointer for interactive elements */
+button, 
+a, 
+[role="button"] {
+  cursor: pointer;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

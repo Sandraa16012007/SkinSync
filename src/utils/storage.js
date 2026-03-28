@@ -62,5 +62,15 @@ export const storage = {
 
   clear() {
     localStorage.removeItem(STORAGE_KEY);
+  },
+
+  deleteAccount() {
+    const email = this.getCurrentEmail();
+    if (email) {
+      const usersDb = JSON.parse(localStorage.getItem(USERS_DB_KEY) || '{}');
+      delete usersDb[email];
+      localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
+    }
+    this.clear();
   }
 };
