@@ -4,111 +4,7 @@ import { Upload, X, FileText, CheckCircle2, Loader2, Image as ImageIcon, Camera,
 import Modal from './Modal'
 import { db } from '../../utils/db'
 import { storage } from '../../utils/storage'
-
-// --- Mock Ingredient Database ---
-const INGREDIENT_DB = {
-  'Niacinamide': { role: 'Active', benefit: 'Brightening, pore minimizing', risk: 'low' },
-  'Retinol': { role: 'Active', benefit: 'Anti-aging, cell turnover', risk: 'moderate' },
-  'Salicylic Acid': { role: 'Active', benefit: 'Exfoliant, acne-fighting', risk: 'moderate' },
-  'Glycolic Acid': { role: 'Active', benefit: 'Exfoliant, brightening', risk: 'moderate' },
-  'Hyaluronic Acid': { role: 'Hydrator', benefit: 'Deep hydration, plumping', risk: 'low' },
-  'Sodium Hyaluronate': { role: 'Hydrator', benefit: 'Deep hydration', risk: 'low' },
-  'Ceramide NP': { role: 'Barrier Repair', benefit: 'Strengthens skin barrier', risk: 'low' },
-  'Squalane': { role: 'Emollient', benefit: 'Moisturizing, non-comedogenic', risk: 'low' },
-  'Glycerin': { role: 'Humectant', benefit: 'Hydration, moisture retention', risk: 'low' },
-  'Aqua': { role: 'Base', benefit: 'Solvent', risk: 'low' },
-  'Phenoxyethanol': { role: 'Preservative', benefit: 'Product safety', risk: 'low' },
-  'Fragrance': { role: 'Additive', benefit: 'Scent', risk: 'high' },
-  'Alcohol Denat': { role: 'Solvent', benefit: 'Quick absorption', risk: 'high' },
-  'Parfum': { role: 'Additive', benefit: 'Scent', risk: 'high' },
-  'Vitamin C': { role: 'Active', benefit: 'Brightening, antioxidant', risk: 'low' },
-  'Ascorbic Acid': { role: 'Active', benefit: 'Brightening, antioxidant', risk: 'moderate' },
-  'Tocopherol': { role: 'Antioxidant', benefit: 'Skin protection', risk: 'low' },
-  'Zinc Oxide': { role: 'Sunscreen', benefit: 'UV protection', risk: 'low' },
-  'Titanium Dioxide': { role: 'Sunscreen', benefit: 'UV protection', risk: 'low' },
-  'Benzoyl Peroxide': { role: 'Active', benefit: 'Acne-fighting', risk: 'moderate' },
-  'Lactic Acid': { role: 'Active', benefit: 'Gentle exfoliant, hydrating', risk: 'moderate' },
-  'Cetearyl Alcohol': { role: 'Emollient', benefit: 'Softening, non-irritating', risk: 'low' },
-  'Dimethicone': { role: 'Emollient', benefit: 'Smoothing, barrier protection', risk: 'low' },
-  'Panthenol': { role: 'Soothing', benefit: 'Calming, healing', risk: 'low' },
-  'Allantoin': { role: 'Soothing', benefit: 'Healing, calming', risk: 'low' },
-  'Aloe Barbadensis': { role: 'Soothing', benefit: 'Calming, hydrating', risk: 'low' },
-  'Sodium Lauryl Sulfate': { role: 'Surfactant', benefit: 'Cleansing', risk: 'high' },
-  'Sodium Laureth Sulfate': { role: 'Surfactant', benefit: 'Cleansing', risk: 'moderate' },
-}
-
-const CONFLICT_RULES = [
-  { pair: ['Retinol', 'Glycolic Acid'], warning: 'Retinol + AHA can cause severe irritation. Avoid using together.' },
-  { pair: ['Retinol', 'Salicylic Acid'], warning: 'Retinol + BHA may over-exfoliate and damage the skin barrier.' },
-  { pair: ['Retinol', 'Benzoyl Peroxide'], warning: 'Benzoyl Peroxide can deactivate Retinol. Use at different times.' },
-  { pair: ['Retinol', 'Vitamin C'], warning: 'Can cause irritation. Use Vitamin C in AM and Retinol in PM.' },
-  { pair: ['Vitamin C', 'Niacinamide'], warning: 'May reduce effectiveness if used at high concentrations together.' },
-  { pair: ['Glycolic Acid', 'Salicylic Acid'], warning: 'Double acid use risks over-exfoliation.' },
-  { pair: ['Benzoyl Peroxide', 'Vitamin C'], warning: 'BP can oxidize Vitamin C, making it ineffective.' },
-  { pair: ['Lactic Acid', 'Retinol'], warning: 'Lactic Acid + Retinol can cause irritation and dryness.' },
-]
-
-function analyzeIngredients(ingredientsList, userProfile) {
-  const parsed = ingredientsList.map(name => {
-    const trimmed = name.trim()
-    const known = INGREDIENT_DB[trimmed]
-    return {
-      name: trimmed,
-      role: known?.role || 'Unknown',
-      benefit: known?.benefit || 'Not in our database yet',
-      risk: known?.risk || 'unknown',
-      isSafe: known ? known.risk !== 'high' : true
-    }
-  })
-
-  // Detect conflicts
-  const conflicts = []
-  const ingredientNames = parsed.map(i => i.name)
-  for (const rule of CONFLICT_RULES) {
-    const [a, b] = rule.pair
-    if (ingredientNames.includes(a) && ingredientNames.includes(b)) {
-      conflicts.push({ pair: rule.pair, warning: rule.warning })
-    }
-  }
-
-  // Personalized warnings based on user sensitivities
-  const warnings = []
-  const sensitivities = userProfile?.skinProfile?.sensitivities || []
-  const skinType = userProfile?.skinProfile?.skinType || ''
-  const reactivity = userProfile?.skinProfile?.reactivity || ''
-
-  for (const ing of parsed) {
-    if (sensitivities.includes('Fragrance') && (ing.name === 'Fragrance' || ing.name === 'Parfum')) {
-      warnings.push({ ingredient: ing.name, message: `You're sensitive to fragrance. This product contains ${ing.name}.`, severity: 'high' })
-    }
-    if (sensitivities.includes('Alcohol') && (ing.name === 'Alcohol Denat')) {
-      warnings.push({ ingredient: ing.name, message: `You're sensitive to alcohol. This product contains drying alcohol.`, severity: 'high' })
-    }
-    if (sensitivities.includes('Sulfates') && (ing.name === 'Sodium Lauryl Sulfate' || ing.name === 'Sodium Laureth Sulfate')) {
-      warnings.push({ ingredient: ing.name, message: `You're sensitive to sulfates. This may strip your skin.`, severity: 'high' })
-    }
-    if (skinType === 'Oily' && ing.role === 'Emollient' && ing.name === 'Dimethicone') {
-      warnings.push({ ingredient: ing.name, message: `Dimethicone may feel heavy on oily skin.`, severity: 'low' })
-    }
-    if (reactivity === 'Easily irritated' && ing.risk === 'moderate') {
-      warnings.push({ ingredient: ing.name, message: `${ing.name} may irritate easily reactive skin. Patch test first.`, severity: 'moderate' })
-    }
-  }
-
-  // Calculate score
-  const highRiskCount = parsed.filter(i => i.risk === 'high').length
-  const modRiskCount = parsed.filter(i => i.risk === 'moderate').length
-  const totalWarnings = warnings.length
-  let score = 100 - (highRiskCount * 20) - (modRiskCount * 8) - (conflicts.length * 10) - (totalWarnings * 3)
-  score = Math.max(10, Math.min(100, score))
-
-  let verdict = 'Safe'
-  if (score < 50) verdict = 'Avoid'
-  else if (score < 70) verdict = 'Use with Caution'
-  else if (score < 85) verdict = 'Mostly Safe'
-
-  return { ingredients: parsed, conflicts, warnings, verdict, score }
-}
+import { scanProduct } from '../../services/scanPipeline'
 
 export default function UploadModal({ isOpen, onClose, onUpload }) {
   const [step, setStep] = useState('front') // 'front' | 'back' | 'manual' | 'analyzing'
@@ -146,33 +42,54 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
   const handleAnalyze = async () => {
     setStep('analyzing')
     
-    const userProfile = storage.getUser()
+    const userProfile = storage.getUser() || {}
     const scanId = crypto.randomUUID()
     const resultId = crypto.randomUUID()
     
     const finalProductName = productName || 'Scanned Product'
-    const finalIngredients = ingredientsText 
-      || 'Aqua, Glycerin, Niacinamide, Squalane, Sodium Hyaluronate, Ceramide NP, Phenoxyethanol'
     
-    const ingredientsList = finalIngredients.split(',').map(i => i.trim()).filter(Boolean)
-    
-    // Run analysis
-    const analysis = analyzeIngredients(ingredientsList, userProfile)
-    
+    let analysis;
+    try {
+      analysis = await scanProduct({
+        imageFile: backImage,
+        ingredientText: ingredientsText,
+        profile: userProfile.skinProfile || {}
+      });
+    } catch(err) {
+      console.error('AI Pipeline failed:', err);
+      analysis = {
+        ingredients: [],
+        score: 50,
+        safe: [],
+        risky: [],
+        explanation: 'Analysis could not be completed.'
+      }
+    }
+
+    let verdict = 'Safe'
     const result = {
       id: resultId,
-      ...analysis
+      ...analysis,
+      ingredients: (analysis.ingredients || []).map(ing => ({
+        name: ing.name || 'Unknown',
+        benefit: ing.benefit || 'Formulation component',
+        risk: ing.risk || 'low',
+        isSafe: ing.risk !== 'high'
+      })),
+      verdict: analysis.verdict,
     }
 
     const scan = {
       id: scanId,
       productName: finalProductName,
-      ingredientsRaw: finalIngredients,
+      ingredientsRaw: ingredientsText || 'Image Scanned',
       date: new Date().toISOString(),
       resultId,
-      status: analysis.verdict === 'Safe' || analysis.verdict === 'Mostly Safe' ? 'safe' : 
-              analysis.verdict === 'Use with Caution' ? 'moderate' : 'danger'
+      status: (analysis.verdict || 'Safe').toLowerCase().includes('safe') ? 'safe' : 
+              (analysis.verdict || '').toLowerCase().includes('caution') ? 'moderate' : 'danger'
     }
+
+
 
     await new Promise(r => setTimeout(r, 1500))
 

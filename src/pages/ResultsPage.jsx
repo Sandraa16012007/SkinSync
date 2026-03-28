@@ -29,11 +29,13 @@ export default function ResultsPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const scanData = await db.getScan(id)
+        const scanData = await db.getScan(id) 
         if (scanData) {
           setScan(scanData)
-          const resultData = await db.getResult(scanData.resultId)
+          let resultData = await db.getResult(scanData.resultId)
           if (resultData) {
+            // Apply normalization layer
+            resultData = normalizeResult(resultData)
             // Add greenwashing check
             const hasGreenwashing = checkGreenwashing(scanData, resultData)
             setData({ ...resultData, greenwashing: hasGreenwashing })
@@ -47,13 +49,57 @@ export default function ResultsPage() {
     fetchData()
   }, [id])
 
+  const normalizeResult = (aiData) => {
+    const safeData = aiData || {}
+    
+    // Universal Clinical Scrubber: Removes OCR symbols, administrative prefixes and noise
+    const scrub = (str) => {
+      if (typeof str !== 'string') return str;
+      return str
+        .replace(/\*/g, '') // Remove asterisks
+        .replace(/ingredients[:\-]?|contains[:\-]?/gi, '') // Remove prefixes anywhere
+        .replace(/^(a|the|of)\s+/i, '') // Remove random leading articles
+        .replace(/\s{2,}/g, ' ') // Collapse spaces
+        .trim();
+    };
+
+    const ingredients = (safeData.ingredients || []).map(ing => {
+      const actualIng = (ing.name && typeof ing.name === 'object') ? ing.name : ing;
+      const risk = actualIng.risk || "low";
+      return {
+        name: scrub(actualIng.name || 'Unknown'),
+        benefit: scrub(actualIng.benefit || "Ingredient used in cosmetic formulations."),
+        warning: scrub(actualIng.warning || null),
+        isSafe: actualIng.safety_status ? actualIng.safety_status === 'Safe' : (risk !== "high"),
+        risk: risk,
+        role: actualIng.role || "Unknown"
+      }
+    })
+
+    return {
+      score: safeData.score || 0,
+      verdict: safeData.verdict || "Unknown",
+      ingredients,
+      warnings: (safeData.warnings || []).map(w => ({ 
+        ...w, 
+        ingredient: scrub(w.ingredient || 'Personal'),
+        message: scrub(w.message) 
+      })),
+      conflicts: (safeData.conflicts || []).map(c => ({ ...c, risk: scrub(c.risk) })),
+      explanation: scrub(safeData.explanation || null)
+    }
+  }
+
+
   const checkGreenwashing = (scan, result) => {
+    if (!scan?.productName || !result?.ingredients) return null;
     const name = scan.productName.toLowerCase()
     const isNaturalClaim = name.includes('natural') || name.includes('organic') || name.includes('pure') || name.includes('clean')
-    const hasIrritants = result.ingredients.some(i => i.risk === 'high' || (i.risk === 'moderate' && i.role === 'Additive'))
+    const hasIrritants = result.ingredients.some(i => i.isSafe === false)
     
     if (isNaturalClaim && hasIrritants) {
-      return `This product claims to be '${isNaturalClaim ? 'clean/natural' : ''}' but contains potential synthetic irritants like ${result.ingredients.find(i => i.risk === 'high')?.name || 'fragrance'}.`
+      const badIng = result.ingredients.find(i => i.isSafe === false)
+      return `This product claims to be 'clean/natural' but contains potential synthetic irritants like ${badIng?.name || 'fragrance'}.`
     }
     return null
   }
