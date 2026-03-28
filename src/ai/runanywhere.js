@@ -76,9 +76,17 @@ export const RunAnywhere = {
 
         const dangerousCount = ingredients.filter(i => i.safety_status === 'Danger').length;
         const cautionCount = ingredients.filter(i => i.safety_status === 'Caution').length;
+        const hasAvoided = ingredients.some(i => i.warning && i.warning.includes('CONFLICT'));
         
-        const baseScore = 100 - (dangerousCount * 30) - (cautionCount * 10);
-        const finalScore = Math.max(10, Math.min(100, baseScore));
+        let finalScore = 100 - (dangerousCount * 40) - (cautionCount * 15);
+        
+        // Strict Veto Caps
+        if (hasAvoided) finalScore = Math.min(finalScore, 20);
+        else if (dangerousCount > 0) finalScore = Math.min(finalScore, 50);
+        else if (cautionCount > 0) finalScore = Math.min(finalScore, 75);
+
+        finalScore = Math.max(10, Math.min(100, finalScore));
+
         
         let verdict = "Safe";
         if (finalScore < 40) verdict = "Avoid";

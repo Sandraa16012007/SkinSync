@@ -90,11 +90,13 @@ DIRECTIONS:
   "explanation": "<Short, clinical summary of why this score was given, citing specific profile conflicts.>"
 }
 
-SCORING RUBRIC:
+SCORING RUBRIC (STRICT VETO RULES):
 - 100: Perfectly tailored for ${skinType} and actively addresses ${concerns}.
-- 70-85: Generally safe, but contains mild irritants or fragrance.
-- 40-60: Contains ingredients explicitly linked to worsening ${concerns}.
-- <40: Contains ingredients in the 'Avoid' list or highly comedogenic/irritating for these user traits.
+- 75-85: Generally safe, but contains mild irritants (fragrance, essential oils).
+- 40-60: Contains ingredients that risk triggering ${concerns}. Capped at 60 if any 'Caution' status exists.
+- <40: ABSOLUTE VETO. If ANY ingredient is in the 'Avoid' list or is 'High Risk' for ${skinType}, the score MUST be below 40.
+- NO CANCELLATION: Safe ingredients do NOT increase the score if a dangerous ingredient is present.
+
 
 Return RAW JSON only. No markdown. No conversational text.`;
 
