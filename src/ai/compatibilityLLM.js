@@ -151,3 +151,78 @@ Return RAW JSON only. No markdown. No conversational text.`;
 
 // Deprecated fallback for older integrations
 export const generateExplanation = async () => "Deprecated";
+
+/**
+ * analyzes a full routine (multiple products) against profile
+ */
+export const generateRoutineReport = async (routineData, profile) => {
+  const { llm } = await loadModels();
+
+  const skinType = profile?.skinType || 'normal';
+  const concerns = profile?.concerns?.join(', ') || 'None';
+  
+  // Format the morning and night product data for the prompt
+  const formatList = (items) => items.map(p => 
+    `- ${p.productName}: [Ingredients: ${p.ingredients?.join(', ') || 'None'}] (Current Safety: ${p.score}/100, Verdict: ${p.verdict})`
+  ).join('\n');
+
+  const morningList = formatList(routineData.morning);
+  const nightList = formatList(routineData.night);
+
+  const prompt = `You are a clinical dermatologist AI.
+Your task is to analyze a Daily Skincare Routine (Morning & Night) for compatibility.
+
+USER PROFILE:
+- Skin Type: ${skinType}
+- Specific Concerns: ${concerns}
+
+ROUTINE:
+MORNING:
+${morningList || 'None'}
+
+NIGHT:
+${nightList || 'None'}
+
+DIRECTIONS:
+1. LAYER ANALYSIS: Check for conflicts in the same session (e.g. Mixing strong Vitamin C with copper peptides or high acids in the morning).
+2. CUMULATIVE RISK: Check if the total routine is too aggressive (e.g. exfoliating in both morning and night).
+3. SUITABILITY: Verify if the overall regime addresses ${concerns} without irritating ${skinType} skin.
+4. INDIVIDUAL VETO: Heavily prioritize the results of the individual clinical analyses (Current Safety) already performed for each product.
+
+RETURN a strict JSON object:
+{
+  "score": <0-100 total routine safety score>,
+  "verdict": "<Safe | Mostly Safe | Use with Caution | Avoid>",
+  "explanation": "<Short summary of why this score was given, highlighting any conflicts OR individual product risks.>",
+  "tips": ["<Tip 1>", "<Tip 2>"]
+}
+
+SCORING RUBRIC (STRICT):
+- 90-100: Balanced, safe for ${skinType}, and all individual products are 'Safe'.
+- 70-85: Generally good but some minor optimization possible. No 'Danger' products allowed.
+- 40-65: Active conflicts detected OR one product is 'Caution/Danger' (Score < 50).
+- <40: ABSOLUTE VETO. If ANY product in the routine has an individual Safety score below 35, the overall routine score MUST NOT exceed 40.
+
+Return RAW JSON only. No markdown.`;
+
+  try {
+    console.log('AI Routine Engine: Starting multi-product analysis...');
+    const response = await llm.generate({
+      prompt: prompt,
+      temperature: 0.1
+    });
+
+    const rawText = typeof response === 'string' ? response : (response.text || response.content || '');
+    const jsonStr = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    return JSON.parse(jsonStr);
+  } catch (error) {
+    console.error('Routine Analysis Error:', error);
+    return {
+      score: 50,
+      verdict: "Unknown",
+      explanation: "Full analysis could not be calculated. Please check individual product scores for safety.",
+      tips: ["One or more products may have a low safety rating."]
+    };
+  }
+};

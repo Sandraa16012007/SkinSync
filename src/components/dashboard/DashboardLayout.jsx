@@ -13,6 +13,9 @@ import CameraModal from '../modals/CameraModal'
 import UploadModal from '../modals/UploadModal'
 import RoutineModal from '../modals/RoutineModal'
 import AddProductModal from '../modals/AddProductModal'
+import RoutineSummaryModal from '../modals/RoutineSummaryModal'
+
+import { generateRoutineReport } from '../../ai/compatibilityLLM'
 
 import { db } from '../../utils/db'
 import { storage } from '../../utils/storage'
@@ -23,7 +26,8 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
     camera: false,
     upload: false,
     routine: false,
-    addProduct: false
+    addProduct: false,
+    routineSummary: false
   })
   
   const [morning, setMorning] = useState([])
@@ -32,6 +36,9 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
   const [stats, setStats] = useState({ totalScans: 0, weeklyScans: 0 })
   const [userProfile, setUserProfile] = useState(storage.getUser())
   const [addSection, setAddSection] = useState('Morning')
+  
+  const [routineAnalysis, setRoutineAnalysis] = useState(null)
+  const [isAnalyzingRoutine, setIsAnalyzingRoutine] = useState(false)
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -40,14 +47,82 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
       setScans(recentScans.slice(0, 5))
 
       const currentRoutine = await db.getRoutine()
-      setMorning(currentRoutine.morning)
-      setNight(currentRoutine.night)
+      setMorning(currentRoutine.morning || [])
+      setNight(currentRoutine.night || [])
+      setRoutineAnalysis(currentRoutine.analysis || null)
 
       const currentStats = await db.getStats()
       setStats(currentStats)
+      
+      // If we have a routine but no analysis, trigger one
+      if ((currentRoutine.morning?.length || currentRoutine.night?.length) && !currentRoutine.analysis) {
+        triggerRoutineAnalysis(currentRoutine.morning, currentRoutine.night)
+      }
     }
     loadDashboardData()
   }, [])
+
+  const triggerRoutineAnalysis = async (m, n) => {
+    if ((!m || m.length === 0) && (!n || n.length === 0)) {
+      setRoutineAnalysis(null)
+      await db.updateRoutine({ morning: m, night: n, analysis: null })
+      return
+    }
+
+    setIsAnalyzingRoutine(true)
+    try {
+      // Always get FRESH profile for analysis
+      const freshProfile = storage.getUser()?.skinProfile || {}
+      const allScans = await db.getAllScans()
+      
+      // Gather ingredients for all products in the routine
+      const fetchIngredients = async (items) => {
+        return Promise.all((items || []).map(async (p) => {
+          // HEAL: If product is just a string (legacy data), try to find a matching scan
+          let result = null;
+          if (typeof p === 'string') {
+            const match = allScans.find(s => s.productName === p)
+            if (match && match.resultId) {
+              result = await db.getResult(match.resultId)
+            }
+            return { 
+              productName: p, 
+              ingredients: result?.ingredients?.map(i => i.name) || [],
+              score: result?.score || 100,
+              verdict: result?.verdict || 'Safe'
+            }
+          }
+
+          // Modern object structure
+          if (!p.resultId) return { productName: p.productName, ingredients: [], score: 100, verdict: 'Safe' }
+          result = await db.getResult(p.resultId)
+          return {
+            productName: p.productName,
+            ingredients: result?.ingredients?.map(i => i.name) || [],
+            score: result?.score || 100,
+            verdict: result?.verdict || 'Safe'
+          }
+        }))
+      }
+
+      console.log('AI Routine Engine: Starting clinical analysis for morning/night batches...');
+      const morningFull = await fetchIngredients(m)
+      const nightFull = await fetchIngredients(n)
+
+      console.log('AI Routine Engine: Analyzing prompt for', freshProfile.skinType, 'skin...');
+      const analysis = await generateRoutineReport(
+        { morning: morningFull, night: nightFull },
+        freshProfile
+      )
+
+      setRoutineAnalysis(analysis)
+      await db.updateRoutine({ morning: m, night: n, analysis })
+    } catch (err) {
+      console.error('Routine Analysis failed:', err)
+    } finally {
+      setIsAnalyzingRoutine(false)
+    }
+  }
 
   const toggleModal = (modal, isOpen) => {
     setActiveModals(prev => ({ ...prev, [modal]: isOpen }))
@@ -78,16 +153,24 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
   const handleUpdateRoutine = async (m, n) => {
     setMorning(m)
     setNight(n)
-    await db.updateRoutine({ morning: m, night: n })
+    await db.updateRoutine({ morning: m, night: n, analysis: routineAnalysis })
+    triggerRoutineAnalysis(m, n)
   }
 
   const handleAddProduct = async (product) => {
-    const newMorning = addSection === 'Morning' ? [...morning, product.productName] : morning
-    const newNight = addSection === 'Night' ? [...night, product.productName] : night
+    const productObj = {
+      id: crypto.randomUUID(),
+      productName: product.productName,
+      resultId: product.resultId
+    }
+
+    const newMorning = addSection === 'Morning' ? [...morning, productObj] : morning
+    const newNight = addSection === 'Night' ? [...night, productObj] : night
     
     setMorning(newMorning)
     setNight(newNight)
-    await db.updateRoutine({ morning: newMorning, night: newNight })
+    await db.updateRoutine({ morning: newMorning, night: newNight, analysis: routineAnalysis })
+    triggerRoutineAnalysis(newMorning, newNight)
     toggleModal('addProduct', false)
   }
 
@@ -195,8 +278,11 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
           {/* Sidebar Column */}
           <div className="lg:col-span-4 space-y-8">
              <SafetyScoreCard 
-               score={stats.totalScans > 0 ? Math.round((stats.weeklyScans / Math.max(stats.totalScans, 1)) * 100) : 0} 
+               score={routineAnalysis?.score || 0} 
+               status={routineAnalysis?.verdict}
                hasRoutine={morning.length + night.length > 0} 
+               isLoading={isAnalyzingRoutine}
+               onViewSummary={() => toggleModal('routineSummary', true)}
              />
              <InsightsCard insights={[]} skinProfile={userProfile?.skinProfile} /> 
           </div>
@@ -236,6 +322,12 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
         onClose={() => toggleModal('addProduct', false)}
         scannedProducts={scans}
         onAdd={handleAddProduct}
+      />
+
+      <RoutineSummaryModal 
+        isOpen={activeModals.routineSummary}
+        onClose={() => toggleModal('routineSummary', false)}
+        analysis={routineAnalysis}
       />
     </div>
   )

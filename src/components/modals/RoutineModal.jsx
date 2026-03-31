@@ -58,12 +58,12 @@ export default function RoutineModal({
           <Reorder.Group axis="y" values={morning} onReorder={(vals) => handleReorder(vals, 'Morning')} className="space-y-3">
             {morning.map((product, index) => (
               <Reorder.Item 
-                key={product} 
+                key={product.id || index} 
                 value={product}
                 className="flex items-center gap-4 p-4 bg-bg-warm/30 rounded-2xl border border-border/10 cursor-grab active:cursor-grabbing group shadow-sm hover:shadow-md transition-shadow"
               >
                 <GripVertical className="text-text-muted/20 group-hover:text-primary transition-all" size={18} />
-                <span className="flex-1 text-sm font-bold text-text">{product}</span>
+                <span className="flex-1 text-sm font-bold text-text">{product.productName || product}</span>
                 <button 
                   onClick={() => handleRemove(index, 'Morning')}
                   className="p-2 text-text-muted/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
@@ -95,12 +95,12 @@ export default function RoutineModal({
           <Reorder.Group axis="y" values={night} onReorder={(vals) => handleReorder(vals, 'Night')} className="space-y-3">
             {night.map((product, index) => (
               <Reorder.Item 
-                key={product} 
+                key={product.id || index} 
                 value={product}
                 className="flex items-center gap-4 p-4 bg-bg-warm/30 rounded-2xl border border-border/10 cursor-grab active:cursor-grabbing group shadow-sm hover:shadow-md transition-shadow"
               >
                 <GripVertical className="text-text-muted/20 group-hover:text-primary transition-all" size={18} />
-                <span className="flex-1 text-sm font-bold text-text">{product}</span>
+                <span className="flex-1 text-sm font-bold text-text">{product.productName || product}</span>
                 <button 
                   onClick={() => handleRemove(index, 'Night')}
                   className="p-2 text-text-muted/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"

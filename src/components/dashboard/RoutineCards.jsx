@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { ShieldCheck, AlertCircle, Sunrise, Moon, Plus, Edit3 } from 'lucide-react'
 
-export function SafetyScoreCard({ score = 0, status, hasRoutine = false }) {
+export function SafetyScoreCard({ score = 0, status, hasRoutine = false, isLoading = false, onViewSummary }) {
   const getStatusColor = () => {
     if (score >= 80) return 'text-primary'
     if (score >= 60) return 'text-yellow-500'
@@ -56,13 +56,29 @@ export function SafetyScoreCard({ score = 0, status, hasRoutine = false }) {
               />
             </svg>
             <div className="absolute flex flex-col items-center">
-               <span className="text-2xl font-serif font-black text-text">{score}%</span>
-               <span className={`text-xs font-black uppercase tracking-widest ${getStatusColor()}`}>{getStatusLabel()}</span>
+               {isLoading ? (
+                 <motion.div 
+                   animate={{ opacity: [0.3, 0.6, 0.3] }}
+                   transition={{ duration: 1.5, repeat: Infinity }}
+                   className="text-xs font-black uppercase tracking-widest text-text-muted"
+                 >
+                   Analyzing...
+                 </motion.div>
+               ) : (
+                 <>
+                   <span className="text-2xl font-serif font-black text-text">{score}%</span>
+                   <span className={`text-xs font-black uppercase tracking-widest ${getStatusColor()}`}>{getStatusLabel()}</span>
+                 </>
+               )}
             </div>
           </div>
 
           <div className="w-full">
-            <button className="w-full py-3 text-sm font-bold text-text-muted hover:text-primary transition-all flex items-center justify-center gap-2">
+            <button 
+              onClick={onViewSummary}
+              disabled={isLoading}
+              className="w-full py-3 text-sm font-bold text-text-muted hover:text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
                View full routine summary
             </button>
           </div>
@@ -111,7 +127,7 @@ export function DailyRoutineCard({ morning = [], night = [], onEdit, onAddProduc
           <div className="space-y-3">
              {morning.length > 0 ? morning.map((product, i) => (
                 <div key={i} className="flex items-center justify-between p-4 bg-bg-warm/30 rounded-2xl border border-border/10">
-                   <span className="text-sm font-bold text-text">{product}</span>
+                   <span className="text-sm font-bold text-text">{product.productName || product}</span>
                    <span className="text-[10px] font-black uppercase tracking-tighter text-text-muted/60">AM</span>
                 </div>
              )) : (
@@ -133,7 +149,7 @@ export function DailyRoutineCard({ morning = [], night = [], onEdit, onAddProduc
           <div className="space-y-3">
              {night.length > 0 ? night.map((product, i) => (
                 <div key={i} className="flex items-center justify-between p-4 bg-bg-warm/30 rounded-2xl border border-border/10">
-                   <span className="text-sm font-bold text-text">{product}</span>
+                   <span className="text-sm font-bold text-text">{product.productName || product}</span>
                    <span className="text-[10px] font-black uppercase tracking-tighter text-text-muted/60">PM</span>
                 </div>
              )) : (

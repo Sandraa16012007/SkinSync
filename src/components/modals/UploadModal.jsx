@@ -67,7 +67,6 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
 
     const finalProductName = productName || analysis.extractedName || 'Scanned Product'
 
-    let verdict = 'Safe'
     const result = {
       id: resultId,
       ...analysis,
@@ -92,21 +91,34 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
               (analysis.verdict || '').toLowerCase().includes('caution') ? 'moderate' : 'danger'
     }
 
+    // Wrap DB and callbacks in a timeout-safe try block to ensure modal closure
+    try {
+      // Create a promise that rejects after 3 seconds
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('DB Timeout')), 3000)
+      );
 
+      // Race the DB operations against the timeout
+      await Promise.race([
+        (async () => {
+          await db.addResult(result)
+          await db.addScan(scan)
+        })(),
+        timeout
+      ]);
+      
+      await new Promise(r => setTimeout(r, 400))
+    } catch (err) {
+      console.warn('DB Save operation was slow or failed, closing modal anyway:', err)
+    }
 
-    await new Promise(r => setTimeout(r, 1500))
-
-    await db.addResult(result)
-    await db.addScan(scan)
-
-    // Close modal first
     reset()
     onClose()
 
-    // Small delay before triggering navigation to avoid state overlaps
-    setTimeout(() => {
-      onUpload(scanId)
-    }, 200)
+    // Notify parent
+    if (onUpload) {
+      setTimeout(() => onUpload(scanId), 100)
+    }
   }
 
   const reset = () => {

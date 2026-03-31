@@ -126,6 +126,82 @@ export const RunAnywhere = {
            return { text: verified };
         }
 
+        // Handle Routine Analysis (Step 4)
+        if (prompt.includes('analyze a Daily Skincare Routine')) {
+          console.log('[AI Routine Engine] Evaluating full morning/night regime...');
+          
+          // --- BEGIN MOCK REASONING ENGINE ---
+          const lowerPrompt = prompt.toLowerCase();
+          const hasVitC = lowerPrompt.includes('vitamin c') || lowerPrompt.includes('ascorbic');
+          const hasRetinol = lowerPrompt.includes('retinol') || lowerPrompt.includes('tretinoin');
+          const hasSalicylic = lowerPrompt.includes('salicylic') || lowerPrompt.includes('bha');
+          const hasGlycolic = lowerPrompt.includes('glycolic') || lowerPrompt.includes('aha');
+          const hasNiacinamide = lowerPrompt.includes('niacinamide');
+          const hasHyaluronic = lowerPrompt.includes('hyaluronic');
+          
+          const isOily = lowerPrompt.includes('skin type: oily');
+          const isDry = lowerPrompt.includes('skin type: dry');
+          const isAcne = lowerPrompt.includes('concern: acne') || lowerPrompt.includes('breakouts');
+          const isSensitive = lowerPrompt.includes('sensitive') || lowerPrompt.includes('irritated');
+
+          // Extract product names for a "better" explanation
+          const products = prompt.match(/- (.*?):/g)?.map(p => p.replace('- ', '').replace(':', '').trim()) || [];
+          const mainProduct = products[0] || "your products";
+
+          // --- NEW: SENSITIVITY TO INDIVIDUAL SCORES ---
+          // Extract safety scores: (Current Safety: 10/100, Verdict: Danger)
+          const safetyScores = [...prompt.matchAll(/Current Safety: (\d+)\/100/g)].map(m => parseInt(m[1]));
+          const minIndividualScore = safetyScores.length > 0 ? Math.min(...safetyScores) : 100;
+          const hasDangerVerdict = prompt.toLowerCase().includes('verdict: danger') || prompt.toLowerCase().includes('verdict: avoid');
+
+          let score = 91 + (Math.random() * 6).toFixed(1) * 1; 
+          let verdict = "Safe";
+          let explanation = `Your routine with ${mainProduct} is well-structured. No major interactions were found between your chosen actives.`;
+          let tips = ["Consistency is key — maintain this routine for at least 4 weeks to see results."];
+
+          // Logic for specific "better" explanations...
+          if (hasSalicylic && isAcne) {
+            score = 96.5;
+            verdict = "Targeted";
+            explanation = `Excellent routine for your acne concerns! The Salicylic Acid in your routine will effectively penetrate pores to clear sebum and prevent future breakouts.`;
+            tips.push("Apply your salicylic treatment directly after cleansing for maximum penetration.");
+          }
+
+          // [CRITICAL] Apply Individual Product Veto
+          if (minIndividualScore < 40 || hasDangerVerdict) {
+            score = Math.min(score, minIndividualScore + 15); // Heavily penalize
+            verdict = minIndividualScore < 20 ? "Avoid" : "Use with Caution";
+            explanation = `Your overall routine is compromised because it contains one or more products flagged as High Risk (Safety Score: ${minIndividualScore}%). Even if other products are safe, this ingredient mix risks severe irritation.`;
+            tips = ["Remove the flagged high-risk product immediately.", "Swap the risky product for a dermatologist-approved alternative from your scan history."];
+          }
+          else if (hasVitC && hasRetinol && lowerPrompt.includes('morning')) {
+            score = 62.4;
+            verdict = "Caution Recommended";
+            explanation = `Layering Vitamin C and Retinol together in the morning is generally not recommended for your profile. This combination increases sensitivity and may cause redness.`;
+            tips = ["Move Retinol to your night routine.", "Ensure you apply a high-SPF sunscreen daily when using Vitamin C."];
+          } 
+          // Conflict: Multiple strong acids + Retinol
+          else if ((hasSalicylic || hasGlycolic) && hasRetinol) {
+            score = 48.2;
+            verdict = "High Irritation Risk";
+            explanation = `Your routine combines strong chemical exfoliants with Retinol. This aggressive pairing is likely to compromise your skin's moisture barrier, leading to irritation.`;
+            tips = ["Alternate your actives: Exfoliate on Monday/Thursday, use Retinol on other nights.", "Use a ceramid-rich recovery cream to support your skin barrier."];
+          }
+          // Benefit: Dry + Hyaluronic
+          else if (hasHyaluronic && isDry) {
+            score = 98.2;
+            verdict = "Highly Compatible";
+            explanation = `This is a perfect routine for dry skin. The Hyaluronic Acid provides deep hydration, while your other products lock that moisture in effectively.`;
+            tips.push("Apply your hyaluronic serum to slightly damp skin to enhance its moisture-binding efficiency.");
+          }
+
+          // --- END MOCK REASONING ENGINE ---
+
+          return {
+            text: JSON.stringify({ score, verdict, explanation, tips })
+          };
+        }
+
 
         // Simulate inference latency
         await new Promise(resolve => setTimeout(resolve, 1500));
