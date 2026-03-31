@@ -91,6 +91,11 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
     toggleModal('addProduct', false)
   }
 
+  const handleOpenAddProduct = (section) => {
+    setAddSection(section)
+    toggleModal('addProduct', true)
+  }
+
   if (!onboardingComplete) {
     return (
        <div className="min-h-screen bg-[#F7F6F3] flex flex-col">
@@ -110,7 +115,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
                     Hello, {userProfile?.userName || 'there'} 👋
                   </h1>
                   <p className="text-text-muted text-lg font-medium">
-                    Let’s get to know your skin before we begin.
+                    Let's get to know your skin before we begin.
                   </p>
                 </div>
 
@@ -174,15 +179,16 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <DailyRoutineCard 
-                  morning={morning}
-                  night={night}
-                  onEdit={() => toggleModal('routine', true)}
-                />
+                   morning={morning}
+                   night={night}
+                   onEdit={() => toggleModal('routine', true)}
+                   onAddProduct={handleOpenAddProduct}
+                 />
                 <ScanHistoryCard 
-                  scans={scans} 
-                  onSelect={(id) => onStartAnalysis && onStartAnalysis(id)} 
-                  onDelete={handleDeleteScan}
-                />
+                   scans={scans} 
+                   onSelect={(id) => onStartAnalysis && onStartAnalysis(id)} 
+                   onDelete={handleDeleteScan}
+                 />
              </div>
           </div>
 
@@ -222,10 +228,7 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
         morningProducts={morning}
         nightProducts={night}
         onUpdateRoutine={handleUpdateRoutine}
-        onOpenAddModal={(section) => {
-          setAddSection(section)
-          toggleModal('addProduct', true)
-        }}
+        onOpenAddModal={handleOpenAddProduct}
       />
 
       <AddProductModal 

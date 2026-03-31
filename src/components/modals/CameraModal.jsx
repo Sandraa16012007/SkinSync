@@ -102,12 +102,12 @@ export default function CameraModal({ isOpen, onClose, onCapture }) {
     const scanId = crypto.randomUUID()
     const resultId = crypto.randomUUID()
 
-    const finalProductName = productName || 'Scanned Product'
-    
     let analysis;
     try {
       const imageBlob = backCaptured ? base64ToBlob(backCaptured) : null;
+      const frontBlob = frontCaptured ? base64ToBlob(frontCaptured) : null;
       analysis = await scanProduct({
+        frontImageFile: frontBlob,
         imageFile: imageBlob,
         ingredientText: ingredientsText,
         profile: userProfile.skinProfile || {}
@@ -122,6 +122,8 @@ export default function CameraModal({ isOpen, onClose, onCapture }) {
          explanation: 'Analysis could not be completed.'
       }
     }
+
+    const finalProductName = productName || analysis.extractedName || 'Scanned Product'
 
     const result = { 
       id: resultId, 

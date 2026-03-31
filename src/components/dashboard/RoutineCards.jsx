@@ -85,7 +85,7 @@ export function SafetyScoreCard({ score = 0, status, hasRoutine = false }) {
 }
 
 
-export function DailyRoutineCard({ morning = [], night = [], onEdit }) {
+export function DailyRoutineCard({ morning = [], night = [], onEdit, onAddProduct }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -115,7 +115,10 @@ export function DailyRoutineCard({ morning = [], night = [], onEdit }) {
                    <span className="text-[10px] font-black uppercase tracking-tighter text-text-muted/60">AM</span>
                 </div>
              )) : (
-                <button className="w-full py-4 border-2 border-dashed border-border/40 rounded-2xl text-text-muted/40 hover:text-primary hover:border-primary/40 transition-all flex items-center justify-center gap-2 text-sm font-bold">
+                <button 
+                  onClick={() => onAddProduct && onAddProduct('Morning')}
+                  className="w-full py-4 border-2 border-dashed border-border/40 rounded-2xl text-text-muted/40 hover:text-primary hover:border-primary/40 transition-all flex items-center justify-center gap-2 text-sm font-bold"
+                >
                    <Plus size={16} /> Add Product
                 </button>
              )}
@@ -134,7 +137,10 @@ export function DailyRoutineCard({ morning = [], night = [], onEdit }) {
                    <span className="text-[10px] font-black uppercase tracking-tighter text-text-muted/60">PM</span>
                 </div>
              )) : (
-                <button className="w-full py-4 border-2 border-dashed border-border/40 rounded-2xl text-text-muted/40 hover:text-primary hover:border-primary/40 transition-all flex items-center justify-center gap-2 text-sm font-bold">
+                <button 
+                  onClick={() => onAddProduct && onAddProduct('Night')}
+                  className="w-full py-4 border-2 border-dashed border-border/40 rounded-2xl text-text-muted/40 hover:text-primary hover:border-primary/40 transition-all flex items-center justify-center gap-2 text-sm font-bold"
+                >
                    <Plus size={16} /> Add Product
                 </button>
              )}

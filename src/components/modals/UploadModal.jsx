@@ -46,11 +46,10 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
     const scanId = crypto.randomUUID()
     const resultId = crypto.randomUUID()
     
-    const finalProductName = productName || 'Scanned Product'
-    
     let analysis;
     try {
       analysis = await scanProduct({
+        frontImageFile: frontImage,
         imageFile: backImage,
         ingredientText: ingredientsText,
         profile: userProfile.skinProfile || {}
@@ -65,6 +64,8 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
         explanation: 'Analysis could not be completed.'
       }
     }
+
+    const finalProductName = productName || analysis.extractedName || 'Scanned Product'
 
     let verdict = 'Safe'
     const result = {
