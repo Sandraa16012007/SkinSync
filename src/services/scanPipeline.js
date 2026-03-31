@@ -1,7 +1,7 @@
-import { extractTextFromImage } from '../ai/vlmOCR';
+import { extractTextFromImage, extractProductName } from '../ai/vlmOCR';
 import { generateCompatibilityReport, verifyIngredients } from '../ai/compatibilityLLM';
 
-export const scanProduct = async ({ imageFile, ingredientText, profile }) => {
+export const scanProduct = async ({ frontImageFile, imageFile, ingredientText, profile }) => {
   try {
     let rawText;
 
@@ -15,6 +15,12 @@ export const scanProduct = async ({ imageFile, ingredientText, profile }) => {
       throw new Error('No image file or ingredient text provided.');
     }
 
+    let extractedName = null;
+    if (frontImageFile) {
+      console.log('Pipeline Step 1.5: Detecting product name from front image...');
+      extractedName = await extractProductName(frontImageFile);
+    }
+
     console.log('Pipeline Step 2: Verifying ingredients with LLM Gatekeeper...');
     const verifiedIngredients = await verifyIngredients(rawText);
     
@@ -22,12 +28,10 @@ export const scanProduct = async ({ imageFile, ingredientText, profile }) => {
     const aiResult = await generateCompatibilityReport(verifiedIngredients, profile);
 
     console.log('Pipeline Complete!');
-    return aiResult;
-
+    return { ...aiResult, extractedName };
 
   } catch (error) {
     console.error('Pipeline Error:', error);
     throw error;
   }
 };
-

@@ -129,8 +129,10 @@ export default function CameraModal({ isOpen, onClose, onCapture }) {
       ingredients: (analysis.ingredients || []).map(ing => ({
         name: ing.name || 'Unknown',
         benefit: ing.benefit || 'Formulation component',
+        warning: ing.warning || null,
         risk: ing.risk || 'low',
-        isSafe: ing.risk !== 'high'
+        safety_status: ing.safety_status || 'Safe',
+        isSafe: ing.safety_status ? ing.safety_status === 'Safe' : ing.risk !== 'high'
       })),
       verdict: analysis.verdict,
     }

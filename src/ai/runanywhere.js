@@ -38,11 +38,19 @@ export const RunAnywhere = {
         const concerns = (prompt.match(/- Specific Concerns:\s*(.*)/i) || [])[1] || "";
         const avoidList = (prompt.match(/- Ingredients to Avoid:\s*(.*)/i) || [])[1] || "";
         
+        // Clean raw input by removing stuff before 'ingredients' and admin blurbs at the end
+        let cleanedInput = rawInput;
+        const ingMatch = cleanedInput.match(/ingredients\s*[:\-]?\s*(.*)/i);
+        if (ingMatch) {
+          cleanedInput = ingMatch[1];
+        }
+        cleanedInput = cleanedInput.replace(/(mrp|net wt|mfg|made in|lic|unit|toll free|customer care).*$/i, '');
+
         // Split and filter ingredients
-        const parsedIngs = rawInput
+        const parsedIngs = cleanedInput
           .split(/[,;\n•|]/) 
-          .map(s => s.trim().replace(/[®™©]/g, ''))
-          .filter(s => s.length > 2 && /[a-zA-Z]/.test(s));
+          .map(s => s.trim().replace(/[®™©*.]/g, ''))
+          .filter(s => s.length > 2 && /[a-zA-Z]/.test(s) && !/^(mrp|net|mfg|lic|unit|rs|incl)/i.test(s));
         
         console.log(`[AI Agent] Clinical Analysis for Profil: ${skinType} | Concerns: ${concerns}`);
         

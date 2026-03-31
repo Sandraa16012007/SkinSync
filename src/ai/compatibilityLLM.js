@@ -66,6 +66,8 @@ DIRECTIONS:
 1. RECONSTRUCT & CLEAN: Use your knowledge of INCI (International Nomenclature of Cosmetic Ingredients) to fix the noisy OCR text below. 
    - Transcribe fragments into full chemical names (e.g., 'Glycer' -> 'Glycerin').
    - Remove marketing fluff, trademark symbols, and non-ingredient noise.
+   - EXCLUDE all administrative text: MRP, Net Wt, Mfg dates, addresses, licenses, prices, and warnings.
+   - ONLY extract words that appear directly after "INGREDIENTS:" or similar headings. Ignore the rest.
 2. MOLECULAR VERIFICATION: Cross-reference every identified ingredient against the user's ${skinType} skin and ${concerns}.
 3. JSON EVALUATION: Return a strict JSON object with:
 {

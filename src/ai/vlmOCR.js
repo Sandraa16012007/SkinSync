@@ -82,3 +82,40 @@ Return ONLY the comma-separated ingredient list.`;
     throw new Error('Could not read ingredients from image. Please try manual entry.');
   }
 };
+
+export const extractProductName = async (imageFile) => {
+  try {
+    console.log('VLM/OCR: Extracting product name from front image...');
+    
+    // Load Tesseract.js from CDN
+    if (!window.Tesseract) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/tesseract.js@5.0.0/dist/tesseract.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    const imgURL = URL.createObjectURL(imageFile);
+    const res = await window.Tesseract.recognize(imgURL, 'eng');
+    
+    const lines = res.data.lines
+      .map(l => l.text.trim())
+      .filter(l => l.length > 3 && !/mrp|net|mfg|lic/i.test(l));
+
+    // Heuristics: Brand name is often the first big word
+    // Let's just grab the first 2 meaningful lines and capitalize them
+    if (lines.length > 0) {
+       const possibleName = (lines[0] + ' ' + (lines[1] || '')).trim().substring(0, 40);
+       return possibleName || 'Scanned Product';
+    }
+
+    return 'Scanned Product';
+
+  } catch (error) {
+    console.error('Front Image OCR Extraction failed:', error);
+    return 'Scanned Product';
+  }
+};
