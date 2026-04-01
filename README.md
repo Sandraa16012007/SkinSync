@@ -1,6 +1,6 @@
-# SkinScript — AI Skincare Analysis System
+# SkinSync — AI Skincare Analysis System
 
-SkinScript is a **privacy-first, AI-powered skincare scanner** that analyzes product ingredients and provides personalized insights based on your skin type, sensitivities, and history.
+SkinSync is a **privacy-first, AI-powered skincare scanner** that analyzes product ingredients and provides personalized insights based on your skin type, sensitivities, and history.
 
 Built with a **local-first architecture**, the app minimizes backend dependency while delivering fast, intelligent results using OCR + LLM.
 
@@ -95,7 +95,7 @@ src/
 
 ```bash
 git clone <your-repo-url>
-cd skinscript
+cd skinsync
 ```
 
 ---
@@ -108,17 +108,7 @@ npm install
 
 ---
 
-## 3. Add environment variables
-
-Create a `.env` file:
-
-```env
-VITE_RUNANYWHERE_KEY=your_api_key_here
-```
-
----
-
-## 4. Run the app locally
+## 3. Run the app locally
 
 ```bash
 npm run dev
@@ -126,7 +116,7 @@ npm run dev
 
 ---
 
-## 5. Build for production
+## 4. Build for production
 
 ```bash
 npm run build
@@ -187,7 +177,7 @@ User sees:
 
 # Deployed Link
 
-Link:
+Link: https://skin-sync-orcin.vercel.app/
 ---
 
 # Notes
@@ -220,4 +210,4 @@ MIT License
 
 # Vision
 
-SkinScript aims to make skincare **transparent, personalized, and trustworthy** by decoding complex ingredient lists into actionable insights — instantly.
+SkinSync aims to make skincare **transparent, personalized, and trustworthy** by decoding complex ingredient lists into actionable insights — instantly.
