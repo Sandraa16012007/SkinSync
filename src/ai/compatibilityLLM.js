@@ -49,7 +49,9 @@ export const generateCompatibilityReport = async (rawIngredientsText, profile) =
 
   const skinType = profile?.skinType || 'normal';
   const concerns = profile?.concerns?.length ? profile.concerns.join(', ') : 'None';
-  const avoid = profile?.avoid?.length ? profile.avoid.join(', ') : 'None';
+  const sensitivities = profile?.sensitivities?.length ? profile.sensitivities.join(', ') : 'None';
+  const actives = profile?.actives?.length ? profile.actives.join(', ') : 'None';
+  const reactivity = profile?.reactivity || 'Normal';
 
   const prompt = `You are a clinical dermatologist and cosmetic chemist AI.
 Your task is to analyze skincare ingredients against a specific user profile.
@@ -57,7 +59,9 @@ Your task is to analyze skincare ingredients against a specific user profile.
 USER PROFILE:
 - Skin Type: ${skinType}
 - Specific Concerns: ${concerns}
-- Ingredients to Avoid: ${avoid}
+- Sensitivities: ${sensitivities}
+- Current Actives: ${actives}
+- Reactivity: ${reactivity}
 
 INPUT TEXT (Potentially noisy OCR scan):
 "${rawIngredientsText}"
@@ -66,9 +70,9 @@ DIRECTIONS:
 1. RECONSTRUCT & CLEAN: Use your knowledge of INCI (International Nomenclature of Cosmetic Ingredients) to fix the noisy OCR text below. 
    - Transcribe fragments into full chemical names (e.g., 'Glycer' -> 'Glycerin').
    - Remove marketing fluff, trademark symbols, and non-ingredient noise.
-   - EXCLUDE all administrative text: MRP, Net Wt, Mfg dates, addresses, licenses, prices, and warnings.
+   - EXCLUDE all administrative text (MRP, Net Wt, Mfg dates, licenses, etc.)
    - ONLY extract words that appear directly after "INGREDIENTS:" or similar headings. Ignore the rest.
-2. MOLECULAR VERIFICATION: Cross-reference every identified ingredient against the user's ${skinType} skin and ${concerns}.
+2. MOLECULAR VERIFICATION: Cross-reference every identified ingredient against the user's ${skinType} skin, ${concerns}, and ${sensitivities}.
 3. JSON EVALUATION: Return a strict JSON object with:
 {
   "score": <0-100 based on clinical suitability>,
@@ -77,7 +81,7 @@ DIRECTIONS:
     {
       "name": "<Chemical Name>",
       "benefit": "<Precise dermatological benefit for ${skinType}>",
-      "warning": "<Why this risks triggering ${concerns} (if any)>",
+      "warning": "<Why this risks triggering ${concerns} or ${sensitivities} (if any)>",
       "risk": "<low | moderate | high>",
       "safety_status": "<Safe | Caution | Danger>"
     }
@@ -85,7 +89,7 @@ DIRECTIONS:
   "warnings": [
     {
       "ingredient": "<Name>",
-      "message": "<Clinical explanation of risk for this user>",
+      "message": "<Clinical explanation of risk for this user's ${skinType} skin and ${sensitivities}>",
       "severity": "<moderate | high>"
     }
   ],
@@ -95,16 +99,18 @@ DIRECTIONS:
 SCORING RUBRIC (STRICT VETO RULES):
 - 100: Perfectly tailored for ${skinType} and actively addresses ${concerns}.
 - 75-85: Generally safe, but contains mild irritants (fragrance, essential oils).
-- 40-60: Contains ingredients that risk triggering ${concerns}. Capped at 60 if any 'Caution' status exists.
-- <40: ABSOLUTE VETO. If ANY ingredient is in the 'Avoid' list or is 'High Risk' for ${skinType}, the score MUST be below 40.
+- 40-60: Contains ingredients that risk triggering ${concerns} OR ${sensitivities}. Capped at 60 if any 'Caution' status exists.
+- <40: ABSOLUTE VETO. If ANY ingredient is in the '${sensitivities}' list or is 'High Risk' for ${skinType}, the score MUST be below 40.
+- SPECIAL CASE: If skin type is 'Dry' or sensitivity is 'Alcohol', flag drying alcohols (Alcohol Denat, Ethanol, Isopropyl Alcohol) as HIGH RISK.
+- SPECIAL CASE: If sensitivity is 'Fragrance', flag Linalool, Limonene, and Parfum as HIGH RISK.
 - NO CANCELLATION: Safe ingredients do NOT increase the score if a dangerous ingredient is present.
-
 
 Return RAW JSON only. No markdown. No conversational text.`;
 
 
   try {
     console.log('AI Engine: Triggering LLM analysis for', rawIngredientsText.length, 'characters of input text...');
+    console.log('AI Engine: Profile Context', { skinType, concerns, sensitivities, actives, reactivity });
     const response = await llm.generate({
       prompt: prompt,
       temperature: 0.1,
@@ -119,7 +125,8 @@ Return RAW JSON only. No markdown. No conversational text.`;
     const parsedData = JSON.parse(jsonStr);
 
     // Map safe/risky derived arrays for backward compatibility in components
-    const safe = parsedData.ingredients.filter(i => i.risk !== 'high').map(i => i.name);
+    // MODIFIED: Make them mutually exclusive for clearer UI
+    const safe = parsedData.ingredients.filter(i => i.risk === 'low').map(i => i.name);
     const risky = parsedData.ingredients.filter(i => i.risk === 'high' || i.risk === 'moderate').map(i => i.name);
 
     return {
@@ -160,6 +167,8 @@ export const generateRoutineReport = async (routineData, profile) => {
 
   const skinType = profile?.skinType || 'normal';
   const concerns = profile?.concerns?.join(', ') || 'None';
+  const sensitivities = profile?.sensitivities?.join(', ') || 'None';
+  const reactivity = profile?.reactivity || 'Normal';
   
   // Format the morning and night product data for the prompt
   const formatList = (items) => items.map(p => 
@@ -175,6 +184,8 @@ Your task is to analyze a Daily Skincare Routine (Morning & Night) for compatibi
 USER PROFILE:
 - Skin Type: ${skinType}
 - Specific Concerns: ${concerns}
+- Sensitivities: ${sensitivities}
+- Reactivity: ${reactivity}
 
 ROUTINE:
 MORNING:
@@ -186,14 +197,14 @@ ${nightList || 'None'}
 DIRECTIONS:
 1. LAYER ANALYSIS: Check for conflicts in the same session (e.g. Mixing strong Vitamin C with copper peptides or high acids in the morning).
 2. CUMULATIVE RISK: Check if the total routine is too aggressive (e.g. exfoliating in both morning and night).
-3. SUITABILITY: Verify if the overall regime addresses ${concerns} without irritating ${skinType} skin.
+3. SUITABILITY: Verify if the overall regime addresses ${concerns} without irritating ${skinType} skin or triggering ${sensitivities}.
 4. INDIVIDUAL VETO: Heavily prioritize the results of the individual clinical analyses (Current Safety) already performed for each product.
 
 RETURN a strict JSON object:
 {
   "score": <0-100 total routine safety score>,
   "verdict": "<Safe | Mostly Safe | Use with Caution | Avoid>",
-  "explanation": "<Short summary of why this score was given, highlighting any conflicts OR individual product risks.>",
+  "explanation": "<Short summary of why this score was given, highlighting any conflicts OR individual product risks for this user's profile.>",
   "tips": ["<Tip 1>", "<Tip 2>"]
 }
 

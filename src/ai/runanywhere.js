@@ -212,9 +212,12 @@ export const RunAnywhere = {
         const rawInput = inputMatch ? inputMatch[1] : "";
         
         // Extract Profile context from prompt
-        const skinType = (prompt.match(/- Skin Type:\s*(.*)/i) || [])[1] || "normal";
-        const concerns = (prompt.match(/- Specific Concerns:\s*(.*)/i) || [])[1] || "";
-        const avoidList = (prompt.match(/- Ingredients to Avoid:\s*(.*)/i) || [])[1] || "";
+        const skinTypeRaw = (prompt.match(/- Skin Type:\s*(.*)/i) || [])[1]?.trim() || "normal";
+        const skinType = skinTypeRaw.toLowerCase();
+        const concerns = (prompt.match(/- Specific Concerns:\s*(.*)/i) || [])[1]?.trim() || "";
+        const sensitivities = (prompt.match(/- Sensitivities:\s*(.*)/i) || [])[1]?.trim() || "";
+        const actives = (prompt.match(/- Current Actives:\s*(.*)/i) || [])[1]?.trim() || "";
+        const reactivity = (prompt.match(/- Reactivity:\s*(.*)/i) || [])[1]?.trim() || "Normal";
         
         // Clean raw input by removing stuff before 'ingredients' and admin blurbs at the end
         let cleanedInput = rawInput;
@@ -239,22 +242,49 @@ export const RunAnywhere = {
           let benefit = `${skinType === 'dry' ? 'Hydrating' : 'Stabilizing'} agent`;
           let warning = null;
           
+          const lowerSensitivities = sensitivities.toLowerCase();
+          
           if (/acid|glycol|retin|oxide|peroxide/.test(lower)) {
              risk = "moderate";
              safety_status = "Caution";
              benefit = `Targeted active for ${concerns.includes('acne') ? 'pore congestion' : 'renewal'}`;
              warning = `May cause sensitivity on ${skinType} skin.`;
-          } else if (/alcohol|parfum|fragrance|sulfate|paraben/.test(lower)) {
+          } else if (/alcohol/.test(lower)) {
+             const isDrying = /denat|ethanol|isopropyl/.test(lower) || lower === 'alcohol';
+             if (isDrying && (skinType === 'dry' || lowerSensitivities.includes('alcohol'))) {
+                risk = "high";
+                safety_status = "Danger";
+                benefit = "Solvent (Drying)";
+                warning = `CRITICAL: High dehydration risk for ${skinType} profile.`;
+             } else {
+                risk = "low";
+                safety_status = "Safe";
+                benefit = `Penetration enhancer ${skinType === 'oily' ? '(Ideal for Oily Skin)' : ''}`;
+                warning = `Safe for ${skinType} use.`;
+             }
+          } else if (/parfum|fragrance|linalool|limonene/.test(lower)) {
+             if (lowerSensitivities.includes('fragrance') || skinType === 'sensitive') {
+                risk = "high";
+                safety_status = "Danger";
+                benefit = "Scent component";
+                warning = `CONFLICT: Profile sensitive to Fragrance.`;
+             } else {
+                risk = "moderate";
+                safety_status = "Caution";
+                benefit = "Fragrance";
+                warning = `Potential allergen for ${skinType} skin.`;
+             }
+          } else if (/sulfate|paraben/.test(lower)) {
              risk = "high";
              safety_status = "Danger";
              benefit = "Synthetic stabilizer";
-             warning = `High irritation risk for ${skinType} skin.`;
+             warning = `Aggressive surfactant; risky for your ${skinType} profile.`;
           }
 
-          if (avoidList.toLowerCase().includes(lower)) {
+          if (lowerSensitivities.includes(lower) && safety_status !== 'Danger') {
             risk = "high";
             safety_status = "Danger";
-            warning = `CONFLICT: Prohibited by user profile.`;
+            warning = `CONFLICT: Prohibited by user profile (${sensitivities}).`;
           }
 
           return { name, benefit, risk, warning, safety_status };
@@ -288,7 +318,7 @@ export const RunAnywhere = {
             message: i.warning,
             severity: i.safety_status === 'Danger' ? 'high' : 'moderate'
           })),
-          explanation: `Clinical analysis complete. Product suitability for ${skinType} skin is ${finalScore}%. ${dangerousCount > 0 ? 'Critical conflicts detected.' : 'Generally safe formulation.'}`
+          explanation: `Clinical analysis complete. Product suitability for ${skinType} skin is ${finalScore}%. ${dangerousCount > 0 ? 'Critical conflicts detected with your sensitivities.' : 'Generally safe formulation.'}`
         };
 
         return {

@@ -10,6 +10,8 @@ import {
   LayoutDashboard
 } from 'lucide-react'
 import { db } from '../utils/db'
+import { storage } from '../utils/storage'
+import { generateCompatibilityReport } from '../ai/compatibilityLLM'
 import { 
   VerdictBadge, 
   IngredientCard, 
@@ -24,6 +26,32 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState(null)
   const [scan, setScan] = useState(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  const reAnalyze = async (rawIngredients, currentProfile, resultId) => {
+    setIsUpdating(true)
+    try {
+      console.log('ResultsPage: Profile mismatch detected. Re-analyzing with current profile...');
+      const updatedAnalysis = await generateCompatibilityReport(rawIngredients, currentProfile)
+      
+      const updatedResult = {
+        id: resultId,
+        ...updatedAnalysis,
+        profile: currentProfile,
+        verifiedIngredients: rawIngredients
+      }
+
+      await db.addResult(updatedResult)
+      
+      // Normalize and update state
+      const normalized = normalizeResult(updatedResult)
+      setData(normalized)
+    } catch (err) {
+      console.error("Re-analysis failed:", err)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,11 +62,21 @@ export default function ResultsPage() {
           setScan(scanData)
           let resultData = await db.getResult(scanData.resultId)
           if (resultData) {
-            // Apply normalization layer
-            resultData = normalizeResult(resultData)
-            // Add greenwashing check
-            const hasGreenwashing = checkGreenwashing(scanData, resultData)
-            setData({ ...resultData, greenwashing: hasGreenwashing })
+            const currentProfile = storage.getUser()?.skinProfile || {}
+            const profileUsed = resultData.profile || {}
+            
+            // Check for profile mismatch
+            const profileChanged = JSON.stringify(currentProfile) !== JSON.stringify(profileUsed)
+            
+            if (profileChanged && resultData.verifiedIngredients) {
+              await reAnalyze(resultData.verifiedIngredients, currentProfile, scanData.resultId)
+            } else {
+              // Apply normalization layer
+              resultData = normalizeResult(resultData)
+              // Add greenwashing check
+              const hasGreenwashing = checkGreenwashing(scanData, resultData)
+              setData({ ...resultData, greenwashing: hasGreenwashing })
+            }
           } 
         }
       } catch (err) {
@@ -104,13 +142,15 @@ export default function ResultsPage() {
     return null
   }
 
-  if (loading) return (
+  if (loading || isUpdating) return (
     <div className="min-h-screen bg-[#F7F6F3] flex flex-col items-center justify-center space-y-6">
       <div className="relative">
         <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" size={28} />
       </div>
-      <p className="font-serif text-xl font-bold text-text-muted italic">Decoding your skin sync...</p>
+      <p className="font-serif text-xl font-bold text-text-muted italic">
+        {isUpdating ? 'Updating analysis for your new profile...' : 'Decoding your skin sync...'}
+      </p>
     </div>
   )
 

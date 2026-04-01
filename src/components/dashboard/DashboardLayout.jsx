@@ -62,6 +62,56 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
     loadDashboardData()
   }, [])
 
+  const generateDynamicInsights = (profile) => {
+    if (!profile) return []
+    const insights = []
+    
+    // Skin Type Based
+    if (profile.skinType === 'Dry') {
+      insights.push({ 
+        type: 'info', 
+        text: "Your dry skin needs barrier-supportive ingredients like Ceramides and Hyaluronic Acid." 
+      })
+    } else if (profile.skinType === 'Oily') {
+      insights.push({ 
+        type: 'info', 
+        text: "For oily skin, look for 'Non-Comedogenic' labels to avoid clogging pores." 
+      })
+    }
+
+    // Sensitivity Based
+    if (profile.sensitivities?.includes('Fragrance')) {
+      insights.push({ 
+        type: 'warning', 
+        text: "Since you're sensitive to fragrance, we'll flag Linalool and Limonene in your scans." 
+      })
+    }
+    if (profile.sensitivities?.includes('Alcohol')) {
+      insights.push({ 
+        type: 'warning', 
+        text: "Alcohol sensitivity detected: We prioritize flagging Ethanol and Alcohol Denat for you." 
+      })
+    }
+
+    // Actives Based
+    if (profile.actives?.some(a => a.includes('Retinol') || a.includes('AHA') || a.includes('BHA'))) {
+      insights.push({ 
+        type: 'info', 
+        text: "Active exfoliants/retinoids detected: A high-SPF sunscreen is mandatory in your AM routine." 
+      })
+    }
+
+    // Generic fallback if no specific insights
+    if (insights.length === 0) {
+      insights.push({ 
+        type: 'info', 
+        text: "Start scanning products to see how they match your unique skin profile." 
+      })
+    }
+
+    return insights.slice(0, 3) // Keep it concise
+  }
+
   const triggerRoutineAnalysis = async (m, n) => {
     if ((!m || m.length === 0) && (!n || n.length === 0)) {
       setRoutineAnalysis(null)
@@ -284,7 +334,10 @@ export default function DashboardLayout({ onboardingComplete = false, onComplete
                isLoading={isAnalyzingRoutine}
                onViewSummary={() => toggleModal('routineSummary', true)}
              />
-             <InsightsCard insights={[]} skinProfile={userProfile?.skinProfile} /> 
+              <InsightsCard 
+                insights={generateDynamicInsights(userProfile?.skinProfile)} 
+                skinProfile={userProfile?.skinProfile} 
+              /> 
           </div>
         </div>
       </main>

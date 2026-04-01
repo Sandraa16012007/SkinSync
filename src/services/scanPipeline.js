@@ -28,7 +28,7 @@ export const scanProduct = async ({ frontImageFile, imageFile, ingredientText, p
     const aiResult = await generateCompatibilityReport(verifiedIngredients, profile);
 
     console.log('Pipeline Complete!');
-    return { ...aiResult, extractedName };
+    return { ...aiResult, extractedName, profile, verifiedIngredients };
 
   } catch (error) {
     console.error('Pipeline Error:', error);
