@@ -1,4 +1,4 @@
-# SkinScript — AI Skincare Ingredient Analyzer
+# SkinScript — AI Skincare Analysis System
 
 SkinScript is a **privacy-first, AI-powered skincare scanner** that analyzes product ingredients and provides personalized insights based on your skin type, sensitivities, and history.
 
